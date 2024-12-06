@@ -67,10 +67,6 @@ def extract_code_from_response(response_text):
     provided `response_text`. If a number is found, it converts and returns it as an integer.
     If no number is found, it returns `None`.
 
-    This function is suitable for handling responses from applications like Jupyter
-    notebooks where the language model is instructed to return simple text outputs,
-    such as an integer code.
-
     Parameters:
         response_text (str): The text response from the language model.
 

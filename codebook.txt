@@ -1,0 +1,64 @@
+Unique identifier for the participant
+
+The reference text that participants must read beforehand. Their responses for the different steps must be semantically related to this text (same topic), but the answer to the question they are asking should not be found in the text.
+
+Response for the IDENTIFY step
+
+Response for the GUESS step
+
+Response for the SEEK step
+
+Response for the ASSESS step
+
+
+A cycle is considered valid if you can answer "yes" to all the following questions:
+
+- Identify Step: Does the Identify step indicate a topic of interest?
+- Guess Step: Does the Guess step suggest a possible explanation?
+- Seek Step: Is the Seek step formulated as a question?
+- Assess Step: Does it identify a possible answer or state that no answer where found ("no" is ok) ?
+- Consistency: Are the Identify, Guess, and Seek steps related to the same question?
+- Reference Link: Are the Identify, Guess, and Seek steps related to the topic of the reference text?
+- Seek Question Originality: Is the answer to the Seek question not found (even vaguely) in the reference text?
+- If the Assess step state an answer, does it answer to the question in the Seek step ?
+- Cycle Resolution: Does the answer to the Seek question resolve the topic identified in the Identify step?
+
+If all these criteria are met, the cycle is valid.
+Validity is expressed as:
+1: Valid cycle
+0: Invalid cycle
+
+Minor spelling, grammatical, or phrasing errors should not be penalized as long as the intent of the entry is clear and aligns with the inclusion criteria. Focus on the content and purpose of the entry rather than linguistic perfection.
+
+
+Example 1
+Identify: "I don’t understand how rain forms."
+Guess: "Maybe rain condenses in the sky, forming droplets."
+Seek: "How does rain form?"
+Assess: "No"
+Reference: "Rain forms when water evaporates into the atmosphere, condenses into droplets, and falls due to gravity."
+
+Reasoning:
+- Identify Step: Does the Identify step indicate a topic of interest?
+Yes: The topic is the formation of rain.
+- Guess Step: Does the Guess step suggest a possible explanation?
+Yes: It proposes condensation as the mechanism for rain formation.
+- Seek Step: Is the Seek step formulated as a question?
+Yes: It is explicitly phrased as a question with an interrogative structure.
+- Assess Step: Does it identify a possible answer or state that no answer where found ("no" is ok) ?
+Yes: It is stated that the answer to the question was not found, which is a valid answer in the Assess step.
+- Consistency: Are the Identify, Guess, and Seek steps related to the same question?
+Yes: They all pertain to the process of rain formation.
+- Reference Link: Are the Identify, Guess, and Seek steps related to the topic of the reference text?
+Yes: The text discusses rain and explains its formation.
+- Seek Question Originality: Is the answer to the Seek question not found (even vaguely) in the reference text?
+No: The answer is explicitly provided in the reference text.
+- If the Assess step state an answer, does it answer to the question in the Seek step ?
+Yes: "No" is a possible response, indicating that a response to the answer was not found.
+- Cycle Resolution: Does the answer to the Seek question resolve the topic identified in the Identify step?
+Yes: The Seek question directly addresses the knowledge gap in the Identify step.
+
+Conclusion: The cycle is not valid because the answer to the Seek question can be found (explicitly) in the reference text.
+
+Validity: 0
+

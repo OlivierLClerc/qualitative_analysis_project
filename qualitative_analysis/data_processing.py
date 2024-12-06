@@ -1,41 +1,98 @@
 # data_processing.py
 import pandas as pd
 import unicodedata
+import chardet
 
-def load_data(file, file_type='csv', **kwargs):
+# data_processing.py
+
+import pandas as pd
+import chardet
+
+def load_data(file, file_type='csv', delimiter=',', **kwargs):
     """
     Loads data from a CSV or Excel file into a pandas DataFrame.
-    
-    This function can handle both file paths and file-like objects (e.g., those returned by `st.file_uploader` in Streamlit).
-    It supports CSV and Excel files, and additional keyword arguments are passed to the underlying pandas read functions.
-    
+
+    This function attempts to read the file using 'utf-8' encoding and the specified delimiter.
+    If it encounters a UnicodeDecodeError, it tries to detect the file's encoding using chardet.
+    If detection fails or the encoding doesn't work, it falls back to 'ISO-8859-1'.
+
     Parameters:
         file (str or file-like object): The file path or file-like object to read.
         file_type (str, optional): The type of file to read. Options are 'csv' or 'xlsx'. Default is 'csv'.
+        delimiter (str, optional): The delimiter used in the CSV file. Default is ','.
         **kwargs: Additional keyword arguments to pass to `pd.read_csv` or `pd.read_excel`.
-    
+
     Returns:
         pandas.DataFrame: The loaded data as a DataFrame.
-    
+
     Raises:
         ValueError: If an unsupported file type is specified.
-        FileNotFoundError: If the file path does not exist (when `file` is a string).
+        UnicodeDecodeError: If the file cannot be decoded with any of the attempted encodings.
         pd.errors.EmptyDataError: If the file is empty.
         pd.errors.ParserError: If there is a parsing error in the file.
-    
-    Example:
-        # Load a CSV file with a custom delimiter
-        data = load_data('data.csv', file_type='csv', delimiter=';', encoding='utf-8')
-        
-        # Load an Excel file from a file-like object
-        data = load_data(uploaded_file, file_type='xlsx')
     """
     if file_type == 'csv':
-        return pd.read_csv(file, **kwargs)
+        # Try reading with default 'utf-8' encoding first
+        try:
+            return pd.read_csv(file, delimiter=delimiter, **kwargs)
+        except UnicodeDecodeError:
+            pass  # Proceed to encoding detection
+        except Exception as e:
+            raise e  # Re-raise any other exceptions
+
+        # Reset file pointer to the beginning if possible
+        if hasattr(file, 'seek'):
+            file.seek(0)
+        # Detect encoding
+        encoding = detect_file_encoding(file)
+        # Reset file pointer again if possible
+        if hasattr(file, 'seek'):
+            file.seek(0)
+        # Try reading again with detected encoding
+        try:
+            return pd.read_csv(file, encoding=encoding, delimiter=delimiter, **kwargs)
+        except UnicodeDecodeError:
+            pass  # Proceed to try 'ISO-8859-1'
+        except Exception as e:
+            raise e  # Re-raise any other exceptions
+
+        # Reset file pointer again if possible
+        if hasattr(file, 'seek'):
+            file.seek(0)
+        # Try with 'ISO-8859-1' encoding
+        try:
+            return pd.read_csv(file, encoding='ISO-8859-1', delimiter=delimiter, **kwargs)
+        except Exception as e:
+            raise UnicodeDecodeError("Failed to read the file with utf-8, detected encoding, or ISO-8859-1.")
     elif file_type == 'xlsx':
         return pd.read_excel(file, **kwargs)
     else:
         raise ValueError("Unsupported file type. Please use 'csv' or 'xlsx'.")
+
+def detect_file_encoding(file):
+    """
+    Detects the encoding of a file using the chardet library.
+
+    Parameters:
+        file (str or file-like object): The file path or file-like object to detect encoding.
+
+    Returns:
+        str: The detected encoding of the file.
+    """
+    # Read a portion of the file for encoding detection
+    if hasattr(file, 'read'):
+        # If file is a file-like object
+        rawdata = file.read(100000)
+    else:
+        # If file is a file path
+        with open(file, 'rb') as f:
+            rawdata = f.read(100000)
+    # Use chardet to detect encoding
+    result = chardet.detect(rawdata)
+    encoding = result['encoding']
+    if encoding is None:
+        encoding = 'utf-8'  # Default to 'utf-8' if detection fails
+    return encoding
 
 def clean_and_normalize(series):
     """

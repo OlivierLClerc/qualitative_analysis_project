@@ -33,7 +33,7 @@ class LLMClient(ABC):
         """
         pass
 
-class AzureLLMClient(LLMClient):
+class OpenAILLMClient(LLMClient):
     """
     Client for interacting with Azure OpenAI language models.
 
@@ -105,7 +105,7 @@ class AzureLLMClient(LLMClient):
         if verbose:
             print(f"Prompt:\n{prompt}\n")
 
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
@@ -222,12 +222,12 @@ def get_llm_client(provider, config):
         client = get_llm_client(provider='together', config=config)
     """
     if provider == 'azure':
-        return AzureLLMClient(
+        return OpenAILLMClient(
             api_key=config['api_key'],
             endpoint=config['endpoint'],
             api_version=config['api_version']
         )
-    elif provider == 'together':
+    elif provider == 'Together':
         return TogetherLLMClient(
             api_key=config['api_key']
         )
