@@ -118,7 +118,8 @@ class OpenAILLMClient(LLMClient):
         if verbose:
             print(f"Generation:\n{response.choices[0].message.content}\n")
 
-        return response.choices[0].message.content.strip()
+        return response.choices[0].message.content.strip(), response.usage
+
 
 class TogetherLLMClient(LLMClient):
     """

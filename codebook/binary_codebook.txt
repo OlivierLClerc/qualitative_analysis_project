@@ -1,3 +1,5 @@
+Description of columns
+
 Unique identifier for the participant
 
 The reference text that participants must read beforehand. Their responses for the different steps must be semantically related to this text (same topic), but the answer to the question they are asking should not be found in the text.
@@ -10,6 +12,7 @@ Response for the SEEK step
 
 Response for the ASSESS step
 
+Codebook
 
 A cycle is considered valid if you can answer "yes" to all the following questions:
 
@@ -30,6 +33,7 @@ Validity is expressed as:
 
 Minor spelling, grammatical, or phrasing errors should not be penalized as long as the intent of the entry is clear and aligns with the inclusion criteria. Focus on the content and purpose of the entry rather than linguistic perfection.
 
+Examples
 
 Example 1
 Identify: "I don’t understand how rain forms."

@@ -58,29 +58,44 @@ def parse_llm_response(evaluation_text, selected_fields):
         print(f"Error parsing LLM response: {e}")
         return {field: None for field in selected_fields}
 
-
-def extract_code_from_response(response_text):
+def extract_code_from_response(response_text, prefix=None):
     """
-    Extracts the first integer code from a language model's text response.
+    Extracts an integer code from a language model response, optionally requiring a prefix.
 
-    This function searches for the first occurrence of one or more digits within the
-    provided `response_text`. If a number is found, it converts and returns it as an integer.
-    If no number is found, it returns `None`.
+    If 'prefix' is specified (e.g., "Validity:"), the function searches for a line matching:
+        "<prefix> <digits>"
+    case-insensitively, returning the integer. For example, "Validity: 1" -> 1
+
+    If no 'prefix' is provided, it falls back to capturing the first integer in the text 
+    (e.g., "I think the code is 2" -> 2).
 
     Parameters:
         response_text (str): The text response from the language model.
+        prefix (str, optional): A string that must precede the integer. Example: "Validity:" or "Score:".
 
     Returns:
-        int or None: The extracted integer code if found; otherwise, `None`.
-
-    Example:
-        response_text = "Based on your input, the classification code is 2."
-        code = extract_code_from_response(response_text)
-        # code => 2
+        int or None: The extracted integer code if found, otherwise None.
     """
-    # Search for the first occurrence of one or more digits
-    number_search_result = re.search(r'\d+', response_text)
-    if number_search_result:
-        return int(number_search_result.group())
+    if prefix:
+        # Compile a regex pattern with the specified prefix
+        # (?i) makes it case-insensitive
+        # \b ensures word boundary before prefix
+        # \s* matches any whitespace between prefix and colon
+        # [:-]? matches an optional colon or hyphen
+        # \s* matches any whitespace between colon/hyphen and digit
+        # (\d+) captures one or more digits
+        # \s*$ ensures that the digit is at the end of the line
+        pattern = rf'(?i)\b{re.escape(prefix)}\s*[:\-]?\s*(\d+)\s*$'
+        match = re.search(pattern, response_text, re.MULTILINE)
+        if match:
+            return int(match.group(1))
+        else:
+            return None
     else:
-        return None
+        # No prefix - fallback: first integer in the entire text
+        number_search_result = re.search(r'\d+', response_text)
+        if number_search_result:
+            return int(number_search_result.group())
+        else:
+            return None
+

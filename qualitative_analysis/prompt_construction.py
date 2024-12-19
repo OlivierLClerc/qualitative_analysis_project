@@ -36,7 +36,8 @@ def construct_prompt(
     instructions,
     selected_fields=None,
     output_format_example=None,
-    output_format_instructions=None
+    output_format_instructions=None,
+    json_output=True
 ):
     """
     Constructs a prompt for a language model based on provided components.
@@ -80,9 +81,10 @@ def construct_prompt(
     if selected_fields is None:
         selected_fields = []
 
-    # Default output format instructions if not provided
-    if output_format_instructions is None:
-        output_format_instructions = f"""
+    # If user doesn't want JSON output
+    if json_output:
+        if output_format_instructions is None:
+            output_format_instructions = f"""
 - Your response should include the following fields: {', '.join(selected_fields)}.
 - **Your response must be in JSON format only. Do not include any explanations, greetings, or additional text.**
 
