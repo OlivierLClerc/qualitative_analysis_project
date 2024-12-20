@@ -133,6 +133,13 @@ class QualitativeAnalysisApp:
             self.processed_data = processed
             st.session_state['processed_data'] = processed
 
+            # Rebuild column_descriptions to only include renamed columns
+            updated_column_descriptions = {}
+            for col in self.processed_data.columns:
+                updated_column_descriptions[col] = self.column_descriptions.get(col, "")
+            self.column_descriptions = updated_column_descriptions
+            st.session_state['column_descriptions'] = self.column_descriptions
+
             st.success("Columns processed successfully!")
             st.write("Processed Data Preview:")
             st.dataframe(self.processed_data.head())
@@ -164,7 +171,6 @@ class QualitativeAnalysisApp:
         st.header("Step 5: Choose the Model")
         
         provider_options = ['OpenAI', 'Together']
-        # We'll see if there's a previous provider stored in session_state. But for simplicity, we always ask the user again:
         selected_provider_display = st.selectbox("Select LLM Provider:", provider_options)
 
         provider_map = {
@@ -195,7 +201,11 @@ class QualitativeAnalysisApp:
 
     def run_analysis(self):
         st.header("Step 6: Run Analysis")
-        
+
+        # Always rebuild the data_format_description to ensure it matches the latest renamed columns
+        data_format_description = build_data_format_description(self.column_descriptions)
+        st.session_state['data_format_description'] = data_format_description
+
         if self.processed_data is None or self.processed_data.empty:
             st.warning("No processed data. Please go to Step 2.")
             return
@@ -233,8 +243,6 @@ class QualitativeAnalysisApp:
             first_entry = self.processed_data.iloc[0]
             entry_text_str = "\n".join([f"{col}: {first_entry[col]}" for col in self.processed_data.columns])
 
-            # Build Prompt
-            data_format_description = build_data_format_description(self.column_descriptions)
             prompt = construct_prompt(
                 data_format_description=data_format_description,
                 entry_text=entry_text_str,
@@ -245,7 +253,6 @@ class QualitativeAnalysisApp:
                 output_format_example={field: "Sample text" for field in self.selected_fields}
             )
 
-            # Get token usage and calculate cost
             try:
                 response, usage = self.llm_client.get_response(
                     prompt=prompt,
@@ -258,15 +265,20 @@ class QualitativeAnalysisApp:
 
                 st.info(f"Estimated cost for processing one entry: ${cost_for_one:.4f}")
                 st.info(f"Estimated total cost for {num_rows} entries: ${total_cost_estimate:.4f}")
+
+                st.session_state['cost_for_one'] = cost_for_one
+                st.session_state['total_cost_estimate'] = total_cost_estimate
+
             except Exception as e:
                 st.error(f"Error estimating cost: {e}")
-
 
         # User Confirmation
         proceed = st.checkbox("I confirm to proceed with the analysis based on the estimated cost.")
         if not proceed:
             st.warning("Analysis aborted.")
             return
+        
+        debug_mode = st.checkbox("Show constructed prompt for debugging", value=False)
 
         # Start Full Analysis
         if st.button("Run Analysis"):
@@ -290,8 +302,13 @@ class QualitativeAnalysisApp:
                     output_format_example={field: "Your text here" for field in self.selected_fields}
                 )
 
+                # If debug mode is on, show the prompt
+                if debug_mode:
+                    st.write("**Constructed Prompt:**")
+                    st.code(prompt)
+
                 try:
-                    response = self.llm_client.get_response(
+                    response, usage = self.llm_client.get_response(
                         prompt=prompt,
                         model=self.selected_model,
                         max_tokens=500,
@@ -354,7 +371,7 @@ class QualitativeAnalysisApp:
                 st.subheader("Select key column to merge on (Comparison Dataset)")
                 comp_key_col = st.selectbox("Comparison Key Column:", comp_columns)
 
-                # Convert both sides to string or int (string is often safer)
+                # Convert both sides to string
                 results_df[llm_key_col] = results_df[llm_key_col].astype(str)
                 comp_data[comp_key_col] = comp_data[comp_key_col].astype(str)
 
@@ -384,7 +401,7 @@ class QualitativeAnalysisApp:
                     judgments_1 = merged[llm_judgment_col].dropna()
                     judgments_2 = merged[external_judgment_col].dropna()
 
-                    # Convert both to int, or keep them as string and label-encode if needed
+                    # Convert both to int if possible
                     try:
                         judgments_1 = judgments_1.astype(int)
                         judgments_2 = judgments_2.astype(int)
@@ -401,7 +418,6 @@ class QualitativeAnalysisApp:
 
             except Exception as e:
                 st.error(f"Error loading comparison file: {e}")
-
 
 def main():
     app = QualitativeAnalysisApp()

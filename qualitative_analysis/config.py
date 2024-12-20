@@ -13,6 +13,6 @@ MODEL_CONFIG = {
 }
 
 MODEL_PRICES = {
-    'gpt-4o': {'prompt': 0.0025, 'completion': 0.01},  # $2.50 per 1M input tokens, $10.00 per 1M output tokens
-    'gpt-4o-mini': {'prompt': 0.00015, 'completion': 0.0006},  # $0.15 per 1M input tokens, $0.60 per 1M output tokens
+    'gpt-4o': {'prompt': 0.0025, 'completion': 0.01},
+    'gpt-4o-mini': {'prompt': 0.00015, 'completion': 0.0006},
 }

@@ -3,11 +3,6 @@ import pandas as pd
 import unicodedata
 import chardet
 
-# data_processing.py
-
-import pandas as pd
-import chardet
-
 def load_data(file, file_type='csv', delimiter=',', **kwargs):
     """
     Loads data from a CSV or Excel file into a pandas DataFrame.

@@ -85,15 +85,15 @@ def extract_code_from_response(response_text, prefix=None):
         # \s* matches any whitespace between colon/hyphen and digit
         # (\d+) captures one or more digits
         # \s*$ ensures that the digit is at the end of the line
-        pattern = rf'(?i)\b{re.escape(prefix)}\s*[:\-]?\s*(\d+)\s*$'
+        pattern = rf'(?i)\b{re.escape(prefix)}\s*[:\-]?\s*([+-]?\d+)\s*$'
         match = re.search(pattern, response_text, re.MULTILINE)
         if match:
             return int(match.group(1))
         else:
             return None
     else:
-        # No prefix - fallback: first integer in the entire text
-        number_search_result = re.search(r'\d+', response_text)
+        # Capture the first integer in the text, including negatives
+        number_search_result = re.search(r'[+-]?\d+', response_text)
         if number_search_result:
             return int(number_search_result.group())
         else:
