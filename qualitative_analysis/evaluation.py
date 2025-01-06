@@ -59,3 +59,39 @@ def compute_cohens_kappa(judgments_1, judgments_2, labels=None, weights=None):
           Educational and Psychological Measurement, 20(1), 37-46.
     """
     return cohen_kappa_score(judgments_1, judgments_2, labels=labels, weights=weights)
+
+def compute_all_kappas(model_coding, human_annotations, labels=None, weights=None, verbose=False):
+    """
+    Computes Cohen's Kappa score for all combinations of model coding
+    and human annotations, as well as between human annotations themselves.
+
+    Parameters:
+        model_coding (list): List of model predictions.
+        human_annotations (dict): Dictionary where keys are rater names and values are lists of annotations.
+        labels (list, optional): List of labels to index the confusion matrix.
+        weights (str, optional): Weighting type to calculate the score.
+        verbose (bool, optional): If True, prints the Kappa scores. Default is False.
+
+    Returns:
+        dict: Dictionary containing Cohen's Kappa scores for all combinations.
+    """
+    results = {}
+
+    # Compare model with each human rater
+    for rater, annotations in human_annotations.items():
+        kappa = compute_cohens_kappa(model_coding, annotations, labels=labels, weights=weights)
+        results[f'model_vs_{rater}'] = kappa
+        if verbose:
+            print(f"Model vs {rater}: {kappa:.2f}")
+
+    # Compare each human rater with every other human rater
+    raters = list(human_annotations.keys())
+    for i in range(len(raters)):
+        for j in range(i + 1, len(raters)):
+            rater1, rater2 = raters[i], raters[j]
+            kappa = compute_cohens_kappa(human_annotations[rater1], human_annotations[rater2], labels=labels, weights=weights)
+            results[f'{rater1}_vs_{rater2}'] = kappa
+            if verbose:
+                print(f"{rater1} vs {rater2}: {kappa:.2f}")
+
+    return results
