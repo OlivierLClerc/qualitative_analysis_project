@@ -116,7 +116,8 @@ class OpenAILLMClient(LLMClient):
         )
 
         if verbose:
-            print(f"Generation:\n{response.choices[0].message.content}\n")
+            print("\n=== LLM Response ===")
+            print(f"{response.choices[0].message.content}\n")
 
         return response.choices[0].message.content.strip(), response.usage
 

@@ -1,13 +1,16 @@
 # notebooks_functions.py
 from qualitative_analysis.response_parsing import extract_code_from_response
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
 
-def generate_with_reasoning(
+def generate_answer(
     llm_client,
     model_name,
     base_prompt,
-    multiclass_query,  # Add multiclass_query as an argument
-    reasoning_query,   # Add reasoning_query as an argument
+    multiclass_query,
+    reasoning_query,
     reasoning=False,
     temperature=0.0001,
     verbose=False
@@ -16,7 +19,7 @@ def generate_with_reasoning(
     Generates a classification result for multiclass classification.
 
     If reasoning is False, make one API call:
-        Base prompt + multiclass query directly.
+        - Base prompt + multiclass query directly.
 
     If reasoning is True, make two API calls:
         1) Base prompt + reasoning query (no classification yet).
@@ -25,35 +28,31 @@ def generate_with_reasoning(
     if reasoning:
         # First call: get reasoning
         first_prompt = f"{base_prompt}\n\n{reasoning_query}"
-        print("=== First LLM Prompt (Reasoning) ===")
 
         response_text_1, usage_1 = llm_client.get_response(
             prompt=first_prompt,
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=True
+            verbose=verbose  # Changed from verbose=True
         )
-
-        print("\n=== LLM Response (Reasoning) ===")
-        print(response_text_1)
+        
+        if verbose:
+            print("\n=== Reasoning ===")
 
         # Second call: use reasoning answer for classification
-        second_prompt = f"{base_prompt}\n\nReasoning:\n{response_text_1}\n\n{multiclass_query}"
-
-        print("\n=== Second LLM Prompt (Classification) ===")
+        second_prompt = f"{base_prompt}\n\nReasoning about the entry:\n{response_text_1}\n\n{multiclass_query}"
 
         response_text_2, usage_2 = llm_client.get_response(
             prompt=second_prompt,
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=True
+            verbose=verbose  # Changed from verbose=True
         )
 
         if verbose:
-            print("\n=== LLM Response (Classification) ===")
-            print(response_text_2)
+            print("\n=== Classification ===")
 
         # Combine usage stats
         usage_1.prompt_tokens += usage_2.prompt_tokens
@@ -63,21 +62,20 @@ def generate_with_reasoning(
         return response_text_2, usage_1
 
     else:
-        # Single-step classification: base prompt + multiclass query
+        # Single-step classification:
+        # base prompt + multiclass query
         single_prompt = base_prompt
-
-        print("=== Single-step Classification Prompt ===")
 
         response_text, usage = llm_client.get_response(
             prompt=single_prompt,
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=True
+            verbose=verbose  # Changed from verbose=True
         )
-        
-        print("\n=== LLM Response (Single-step Classification) ===")
-        print(response_text)
+
+        if verbose:
+            print("\n=== Single-step Classification ===")
 
         return response_text, usage
 
@@ -86,95 +84,148 @@ def process_verbatims(
     llm_client,
     model_name,
     theme_name,
-    theme_description,
-    data_format_description,
-    construct_prompt,  # Accept the prompt construction function
-    multiclass_query,  # Add multiclass_query as an argument
-    reasoning_query,   # Add reasoning_query as an argument
-    valid_scores,      # Add valid_scores as an argument
+    base_prompt,
+    multiclass_query,
+    reasoning_query,
+    valid_scores,
     reasoning=False,
     verbose=False
 ):
     """
-    Process a subset of verbatims and classify them based on the provided theme and description.
+    Process a subset of verbatims and classify them based on the provided theme 
+    and description.
+
+    :param verbatims_subset: A list of verbatims, each a single string in the form:
+                            "Text: ...\n\nQuestion: ..."
+    :param llm_client:       An object or client to interface with the LLM 
+                             (must implement get_response).
+    :param model_name:       The name of the LLM model to use.
+    :param theme_name:       The classification theme (e.g., 'Classification de divergence').
+    :param base_prompt:      A string template for the prompt, 
+                             containing a placeholder {verbatim_text}.
+    :param multiclass_query: A short query telling the LLM how to respond for classification 
+                             (e.g., "Répondez uniquement avec un chiffre...").
+    :param reasoning_query:  A short query asking the LLM to generate an explanation (if reasoning=True).
+    :param valid_scores:     A list of valid numeric labels, e.g., [0, 1, 2].
+    :param reasoning:        If True, perform two-step reasoning. If False, single-step classification.
+    :param verbose:          If True, print intermediate prompts/responses.
+    :return:                 (results, verbatim_costs) where:
+                             - results is a list of dicts with "Verbatim" and "Label"
+                             - verbatim_costs is a list of cost usage stats per verbatim
     """
     results = []
     verbatim_costs = []
     total_tokens_used = 0
     total_cost = 0
 
-    for idx, verbatim in enumerate(verbatims_subset):
+    for idx, verbatim_item in enumerate(verbatims_subset):
         print(f"\n=== Processing Verbatim {idx + 1}/{len(verbatims_subset)} ===")
-        verbatim_tokens_used = 0
-        verbatim_cost = 0
 
-        print(f"\n--- Evaluating Theme: {theme_name} ---")
+        # Because verbatim_item is just a single string:
+        verbatim_text = verbatim_item
 
-        # Build the base prompt using the provided construct_prompt function
-        base_prompt = construct_prompt(
-            verbatim=verbatim,
-            theme=theme_name,
-            theme_description=theme_description,
-            data_format_description=data_format_description
-        )
+        # Format the prompt with the verbatim text
+        final_prompt = base_prompt.format(verbatim_text=verbatim_text)
 
         try:
-            response_content, usage = generate_with_reasoning(
+            # Call the generate_answer function
+            response_content, usage = generate_answer(
                 llm_client=llm_client,
                 model_name=model_name,
-                base_prompt=base_prompt,
-                multiclass_query=multiclass_query,  # Pass multiclass_query
-                reasoning_query=reasoning_query,    # Pass reasoning_query
+                base_prompt=final_prompt,
+                multiclass_query=multiclass_query,
+                reasoning_query=reasoning_query,
                 reasoning=reasoning,
                 temperature=0.0001,
                 verbose=verbose
             )
 
-            # Track token usage
+            # (Optional) track usage/cost if usage is returned
             if usage:
                 prompt_tokens = usage.prompt_tokens
                 completion_tokens = usage.completion_tokens
-                total_tokens = usage.total_tokens
+                tokens_used = usage.total_tokens
 
-                # Calculate the cost for this request
-                cost = openai_api_calculate_cost(usage, model=model_name)
-                total_tokens_used += total_tokens
+                # Example cost calculation (substitute with your logic, or remove if not needed):
+                cost = openai_api_calculate_cost(usage, model=model_name)  
+                total_tokens_used += tokens_used
                 total_cost += cost
-                verbatim_tokens_used += total_tokens
-                verbatim_cost += cost
 
-                # Print detailed token usage and cost
-                print(f"\nTokens Used: {prompt_tokens} (prompt) + {completion_tokens} (completion) = {total_tokens} total")
-                print(f"Cost for '{theme_name}': ${cost:.4f}")
-
-            # Parse response
-            score = extract_code_from_response(response_content)
-            if score in valid_scores:  # Use the provided valid_scores
-                results.append({
-                    'Verbatim': verbatim,
-                    'Label': score
+                # Store verbatim-level usage
+                verbatim_costs.append({
+                    'Verbatim': verbatim_item,
+                    'Tokens Used': tokens_used,
+                    'Cost': cost
                 })
+
+                if verbose:
+                    print(f"\nTokens Used: {prompt_tokens} (prompt) + {completion_tokens} (completion) = {tokens_used} total")
+                    print(f"Cost for '{theme_name}': ${cost:.4f}")
+            else:
+                # If there's no usage info, store a placeholder
+                verbatim_costs.append({
+                    'Verbatim': verbatim_item,
+                    'Tokens Used': 0,
+                    'Cost': 0.0
+                })
+
+            # Extract classification label from the response
+            score = extract_code_from_response(response_content)  
+            if score in valid_scores:
+                results.append({"Verbatim": verbatim_item, "Label": score})
                 print(f"Extracted Label: {score}")
             else:
                 print("Failed to parse a valid label.")
-                results.append({
-                    'Verbatim': verbatim,
-                    'Label': None
-                })
+                results.append({"Verbatim": verbatim_item, "Label": None})
 
         except Exception as e:
+            # If an exception is raised, log it and store None for that verbatim
             print(f"Error processing Verbatim {idx + 1} for '{theme_name}': {e}")
-            results.append({
-                'Verbatim': verbatim,
-                'Label': None
+            results.append({"Verbatim": verbatim_item, "Label": None})
+            verbatim_costs.append({
+                'Verbatim': verbatim_item,
+                'Tokens Used': 0,
+                'Cost': 0.0
             })
 
-        # Store verbatim-level cost
-        verbatim_costs.append({'Verbatim': verbatim, 'Tokens Used': verbatim_tokens_used, 'Cost': verbatim_cost})
-
-    # Final Summary
+    # Print final summary
     print("\n=== Processing Complete ===")
     print(f"Total Tokens Used: {total_tokens_used}")
     print(f"Total Cost for Processing: ${total_cost:.4f}")
 
     return results, verbatim_costs
+
+def plot_confusion_matrices(model_coding, human_annotations, labels):
+    """
+    Plots confusion matrices for all combinations of model coding and human annotations,
+    as well as between human annotations themselves, using Seaborn.
+
+    Parameters:
+        model_coding (list): List of model predictions.
+        human_annotations (dict): Dictionary where keys are rater names and values are lists of annotations.
+        labels (list): List of labels to index the confusion matrix.
+    """
+    sns.set(style="whitegrid")  # Set the style of the plots
+
+    # Compare model with each human rater
+    for rater, annotations in human_annotations.items():
+        cm = confusion_matrix(annotations, model_coding, labels=labels)
+        plt.figure(figsize=(5, 5))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
+        plt.title(f"Confusion Matrix: Model vs {rater}")
+        plt.xlabel('Model Predictions')
+        plt.ylabel(f'{rater} Annotations')
+        plt.show()
+
+    # Compare each human rater with every other human rater
+    raters = list(human_annotations.keys())
+    for i in range(len(raters)):
+        for j in range(i + 1, len(raters)):
+            rater1, rater2 = raters[i], raters[j]
+            cm = confusion_matrix(human_annotations[rater1], human_annotations[rater2], labels=labels)
+            plt.figure(figsize=(5, 5))
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
+            plt.title(f"Confusion Matrix: {rater1} vs {rater2}")
+            plt.xlabel(f'{rater2} Annotations')
+            plt.ylabel(f'{rater1} Annotations')
+            plt.show()

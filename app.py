@@ -71,6 +71,10 @@ class QualitativeAnalysisApp:
 
             try:
                 data = load_data(uploaded_file, file_type=file_type, delimiter=delimiter)
+                st.session_state['selected_columns'] = []
+                st.session_state['column_renames'] = {}
+                st.session_state['column_descriptions'] = {}
+
                 st.success("Data loaded successfully!")
                 st.write("Data Preview:", data.head())
 
@@ -91,11 +95,16 @@ class QualitativeAnalysisApp:
         
         columns = self.data.columns.tolist()
 
+        # Pull from session_state
+        previous_selection = st.session_state.get('selected_columns', [])
+        # Filter out invalid columns
+        valid_previous_selection = [col for col in previous_selection if col in columns]
+
         st.write("Select which columns to include in your analysis:")
         self.selected_columns = st.multiselect(
             "Columns to include:",
-            columns,
-            default=self.selected_columns if self.selected_columns else columns
+            options=columns,
+            default=valid_previous_selection if valid_previous_selection else columns
         )
         st.session_state['selected_columns'] = self.selected_columns
 
@@ -238,8 +247,7 @@ class QualitativeAnalysisApp:
             )
 
         # Cost Estimation for the First Entry
-        st.subheader("Cost Estimation")
-        if st.button("Estimate Cost for First Entry"):
+        if st.button("Estimate price before analysis (will run on one entry)"):
             first_entry = self.processed_data.iloc[0]
             entry_text_str = "\n".join([f"{col}: {first_entry[col]}" for col in self.processed_data.columns])
 
@@ -272,12 +280,7 @@ class QualitativeAnalysisApp:
             except Exception as e:
                 st.error(f"Error estimating cost: {e}")
 
-        # User Confirmation
-        proceed = st.checkbox("I confirm to proceed with the analysis based on the estimated cost.")
-        if not proceed:
-            st.warning("Analysis aborted.")
-            return
-        
+        # Debug mode checkbox
         debug_mode = st.checkbox("Show constructed prompt for debugging", value=False)
 
         # Start Full Analysis
@@ -347,8 +350,19 @@ class QualitativeAnalysisApp:
 
         if comparison_file is not None:
             file_type = "csv" if comparison_file.name.endswith(".csv") else "xlsx"
+            
+            # Let the user specify a delimiter for the comparison file if it's CSV
+            if file_type == "csv":
+                comp_delimiter = st.text_input("Delimiter for comparison CSV:", value=";")
+            else:
+                comp_delimiter = None  # not used for XLSX
+
             try:
-                comp_data = load_data(comparison_file, file_type=file_type, delimiter=';')
+                comp_data = load_data(
+                    comparison_file, 
+                    file_type=file_type, 
+                    delimiter=comp_delimiter if comp_delimiter else ";"
+                )
                 st.write("Comparison data preview:")
                 st.dataframe(comp_data.head())
 
@@ -362,23 +376,34 @@ class QualitativeAnalysisApp:
                 results_df = pd.DataFrame(self.results)
 
                 # Let user pick the key columns from each DataFrame
-                llm_columns = results_df.columns.tolist()
-                comp_columns = comp_data.columns.tolist()
-
                 st.subheader("Select key column to merge on (LLM Results)")
+                llm_columns = results_df.columns.tolist()
                 llm_key_col = st.selectbox("LLM Key Column:", llm_columns)
 
                 st.subheader("Select key column to merge on (Comparison Dataset)")
+                comp_columns = comp_data.columns.tolist()
                 comp_key_col = st.selectbox("Comparison Key Column:", comp_columns)
 
-                # Convert both sides to string
+                # Let the user choose which columns from comp_data to keep (besides the key)
+                st.subheader("Select columns from the comparison dataset to include in the merge:")
+                possible_comp_cols = [col for col in comp_columns if col != comp_key_col]
+                selected_comp_cols = st.multiselect(
+                    "Columns to import:",
+                    possible_comp_cols,
+                    default=possible_comp_cols  # or `[]` if you want none by default
+                )
+
+                # Convert both sides to string (for consistent merge keys)
                 results_df[llm_key_col] = results_df[llm_key_col].astype(str)
                 comp_data[comp_key_col] = comp_data[comp_key_col].astype(str)
+
+                # Subset the comparison data to the key + selected columns
+                comp_data_subset = comp_data[[comp_key_col] + selected_comp_cols]
 
                 # Perform the merge
                 merged = pd.merge(
                     results_df,
-                    comp_data,
+                    comp_data_subset,
                     left_on=llm_key_col,
                     right_on=comp_key_col,
                     how="inner"
@@ -406,7 +431,11 @@ class QualitativeAnalysisApp:
                         judgments_1 = judgments_1.astype(int)
                         judgments_2 = judgments_2.astype(int)
                     except ValueError:
-                        st.error(f"Could not convert {llm_judgment_col} or {external_judgment_col} to int. Ensure they contain valid integers.")
+                        st.error(
+                            f"Could not convert {llm_judgment_col} or "
+                            f"{external_judgment_col} to int. "
+                            f"Ensure they contain valid integers."
+                        )
                         return
 
                     if len(judgments_1) == 0 or len(judgments_2) == 0:
