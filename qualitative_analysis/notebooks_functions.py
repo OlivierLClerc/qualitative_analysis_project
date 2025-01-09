@@ -1,9 +1,6 @@
 # notebooks_functions.py
 from qualitative_analysis.response_parsing import extract_code_from_response
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix
 
 def generate_answer(
     llm_client,
@@ -195,37 +192,156 @@ def process_verbatims(
 
     return results, verbatim_costs
 
-def plot_confusion_matrices(model_coding, human_annotations, labels):
+
+
+def generate_binary_classification_answer(
+    llm_client,
+    model_name,
+    final_prompt,
+    reasoning_query,
+    binary_query,
+    reasoning=False,
+    temperature=0.0001,
+    verbose=False
+):
     """
-    Plots confusion matrices for all combinations of model coding and human annotations,
-    as well as between human annotations themselves, using Seaborn.
-
-    Parameters:
-        model_coding (list): List of model predictions.
-        human_annotations (dict): Dictionary where keys are rater names and values are lists of annotations.
-        labels (list): List of labels to index the confusion matrix.
+    Generates a binary classification ('1' or '0').
+    ...
     """
-    sns.set(style="whitegrid")  # Set the style of the plots
+    if reasoning:
+        # Two-step approach
+        first_prompt = f"{final_prompt}\n\n{reasoning_query}"
+        response_text_1, usage_1 = llm_client.get_response(
+            prompt=first_prompt,
+            model=model_name,
+            max_tokens=500,
+            temperature=temperature,
+            verbose=verbose
+        )
 
-    # Compare model with each human rater
-    for rater, annotations in human_annotations.items():
-        cm = confusion_matrix(annotations, model_coding, labels=labels)
-        plt.figure(figsize=(5, 5))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
-        plt.title(f"Confusion Matrix: Model vs {rater}")
-        plt.xlabel('Model Predictions')
-        plt.ylabel(f'{rater} Annotations')
-        plt.show()
+        second_prompt = f"{final_prompt}\n\nReasoning:\n{response_text_1}\n\n{binary_query}"
+        response_text_2, usage_2 = llm_client.get_response(
+            prompt=second_prompt,
+            model=model_name,
+            max_tokens=500,
+            temperature=temperature,
+            verbose=verbose
+        )
 
-    # Compare each human rater with every other human rater
-    raters = list(human_annotations.keys())
-    for i in range(len(raters)):
-        for j in range(i + 1, len(raters)):
-            rater1, rater2 = raters[i], raters[j]
-            cm = confusion_matrix(human_annotations[rater1], human_annotations[rater2], labels=labels)
-            plt.figure(figsize=(5, 5))
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
-            plt.title(f"Confusion Matrix: {rater1} vs {rater2}")
-            plt.xlabel(f'{rater2} Annotations')
-            plt.ylabel(f'{rater1} Annotations')
-            plt.show()
+        usage_1.prompt_tokens += usage_2.prompt_tokens
+        usage_1.completion_tokens += usage_2.completion_tokens
+        usage_1.total_tokens += usage_2.total_tokens
+
+        return response_text_2, usage_1
+
+    else:
+        # Single-step
+        single_prompt = f"{final_prompt}\n\n{binary_query}"
+        response_text, usage = llm_client.get_response(
+            prompt=single_prompt,
+            model=model_name,
+            max_tokens=500,
+            temperature=temperature,
+            verbose=verbose
+        )
+        return response_text, usage
+
+
+def process_verbatims_for_binary_criteria(
+    verbatims_subset,
+    codebooks,
+    llm_client,
+    model_name,
+    prompt_template,
+    reasoning_query,
+    binary_query,
+    reasoning=False,
+    verbose=False
+):
+    """
+    Loops over each verbatim and each (theme_name, theme_description) in codebooks.
+    For each combination, build a prompt and do a binary classification.
+    ...
+    """
+
+    results = []
+    verbatim_costs = []
+    total_tokens_used = 0
+    total_cost = 0
+
+    for idx, verbatim_text in enumerate(verbatims_subset):
+        print(f"\n=== Processing Verbatim {idx+1}/{len(verbatims_subset)} ===")
+
+        verbatim_tokens_used = 0
+        verbatim_cost = 0
+
+        # For each item in the codebook dictionary
+        for theme_name, codebook in codebooks.items():
+
+            if verbose:
+                print(f"\n--- Evaluating Theme: {theme_name} ---")
+
+            # Build the final prompt
+            final_prompt = prompt_template.format(
+                verbatim_text=verbatim_text,
+                codebook=codebook
+            )
+
+            try:
+                response_text, usage = generate_binary_classification_answer(
+                    llm_client=llm_client,
+                    model_name=model_name,
+                    final_prompt=final_prompt,
+                    reasoning_query=reasoning_query,
+                    binary_query=binary_query,
+                    reasoning=reasoning,
+                    temperature=0.0001,
+                    verbose=verbose
+                )
+
+                # Track usage/cost if usage is returned
+                if usage:
+                    tokens_used = usage.total_tokens
+                    # use your cost function
+                    cost = openai_api_calculate_cost(usage, model=model_name)
+                    total_tokens_used += tokens_used
+                    total_cost += cost
+
+                    verbatim_tokens_used += tokens_used
+                    verbatim_cost += cost
+
+                # parse the numeric classification (0 or 1)
+                score = extract_code_from_response(response_text)
+                if score in [0, 1]:
+                    results.append({
+                        'Verbatim': verbatim_text,
+                        'Theme': theme_name,
+                        'Score': score
+                    })
+                else:
+                    results.append({
+                        'Verbatim': verbatim_text,
+                        'Theme': theme_name,
+                        'Score': None
+                    })
+
+            except Exception as e:
+                print(f"Error processing Verbatim {idx+1} / Theme '{theme_name}': {e}")
+                results.append({
+                    'Verbatim': verbatim_text,
+                    'Theme': theme_name,
+                    'Score': None
+                })
+
+        # Store usage/cost for this verbatim
+        verbatim_costs.append({
+            'Verbatim': verbatim_text,
+            'Tokens Used': verbatim_tokens_used,
+            'Cost': verbatim_cost
+        })
+
+    print("\n=== Processing Complete ===")
+    print(f"Total Tokens Used: {total_tokens_used}")
+    print(f"Total Cost for Processing: ${total_cost:.4f}")
+
+    return results, verbatim_costs
