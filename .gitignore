@@ -86,6 +86,9 @@ env/
 venv/
 ENV/
 
+# output
+.data/output
+
 # PyCharm
 .idea/
 
