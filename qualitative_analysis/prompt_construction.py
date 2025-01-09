@@ -1,6 +1,7 @@
 # prompt_construction.py
 import json
 
+
 def build_data_format_description(column_descriptions):
     """
     Builds a textual description of the data format based on column descriptions.
@@ -23,10 +24,11 @@ def build_data_format_description(column_descriptions):
         }
         data_format_description = build_data_format_description(column_descriptions)
     """
-    description = 'The data has the following columns:\n'
+    description = "The data has the following columns:\n"
     for col, desc in column_descriptions.items():
         description += f'- "{col}": {desc}\n'
     return description
+
 
 def construct_prompt(
     data_format_description,
@@ -37,7 +39,7 @@ def construct_prompt(
     selected_fields=None,
     output_format_example=None,
     output_format_instructions=None,
-    json_output=True
+    json_output=True,
 ):
     """
     Constructs a prompt for a language model based on provided components.

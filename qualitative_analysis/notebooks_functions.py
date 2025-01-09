@@ -2,6 +2,7 @@
 from qualitative_analysis.response_parsing import extract_code_from_response
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
 
+
 def generate_answer(
     llm_client,
     model_name,
@@ -10,7 +11,7 @@ def generate_answer(
     reasoning_query,
     reasoning=False,
     temperature=0.0001,
-    verbose=False
+    verbose=False,
 ):
     """
     Generates a classification result for multiclass classification.
@@ -31,9 +32,9 @@ def generate_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose  # Changed from verbose=True
+            verbose=verbose,  # Changed from verbose=True
         )
-        
+
         if verbose:
             print("\n=== Reasoning ===")
 
@@ -45,7 +46,7 @@ def generate_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose  # Changed from verbose=True
+            verbose=verbose,  # Changed from verbose=True
         )
 
         if verbose:
@@ -68,13 +69,14 @@ def generate_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose  # Changed from verbose=True
+            verbose=verbose,  # Changed from verbose=True
         )
 
         if verbose:
             print("\n=== Single-step Classification ===")
 
         return response_text, usage
+
 
 def process_verbatims(
     verbatims_subset,
@@ -86,10 +88,10 @@ def process_verbatims(
     reasoning_query,
     valid_scores,
     reasoning=False,
-    verbose=False
+    verbose=False,
 ):
     """
-    Process a subset of verbatims and classify them based on the provided themes 
+    Process a subset of verbatims and classify them based on the provided themes
     and descriptions from the codebooks.
 
     Args:
@@ -126,8 +128,7 @@ def process_verbatims(
 
             # Build the final prompt
             final_prompt = prompt_template.format(
-                verbatim_text=verbatim_text,
-                codebook=codebook
+                verbatim_text=verbatim_text, codebook=codebook
             )
 
             try:
@@ -140,7 +141,7 @@ def process_verbatims(
                     reasoning_query=reasoning_query,
                     reasoning=reasoning,
                     temperature=0.0001,
-                    verbose=verbose
+                    verbose=verbose,
                 )
 
                 # Track usage/cost if usage is returned
@@ -156,40 +157,36 @@ def process_verbatims(
                 # Parse the classification score
                 score = extract_code_from_response(response_content)
                 if score in valid_scores:
-                    results.append({
-                        'Verbatim': verbatim_text,
-                        'Theme': theme_name,
-                        'Label': score
-                    })
+                    results.append(
+                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": score}
+                    )
                 else:
-                    results.append({
-                        'Verbatim': verbatim_text,
-                        'Theme': theme_name,
-                        'Label': None
-                    })
+                    results.append(
+                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
+                    )
 
             except Exception as e:
-                print(f"Error processing Verbatim {idx + 1} / Theme '{theme_name}': {e}")
-                results.append({
-                    'Verbatim': verbatim_text,
-                    'Theme': theme_name,
-                    'Label': None
-                })
+                print(
+                    f"Error processing Verbatim {idx + 1} / Theme '{theme_name}': {e}"
+                )
+                results.append(
+                    {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
+                )
 
         # Store usage/cost for this verbatim
-        verbatim_costs.append({
-            'Verbatim': verbatim_text,
-            'Tokens Used': verbatim_tokens_used,
-            'Cost': verbatim_cost
-        })
+        verbatim_costs.append(
+            {
+                "Verbatim": verbatim_text,
+                "Tokens Used": verbatim_tokens_used,
+                "Cost": verbatim_cost,
+            }
+        )
 
     print("\n=== Processing Complete ===")
     print(f"Total Tokens Used: {total_tokens_used}")
     print(f"Total Cost for Processing: ${total_cost:.4f}")
 
     return results, verbatim_costs
-
-
 
 
 def generate_binary_classification_answer(
@@ -200,7 +197,7 @@ def generate_binary_classification_answer(
     binary_query,
     reasoning=False,
     temperature=0.0001,
-    verbose=False
+    verbose=False,
 ):
     """
     Generates a binary classification ('1' or '0').
@@ -214,16 +211,18 @@ def generate_binary_classification_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose
+            verbose=verbose,
         )
 
-        second_prompt = f"{final_prompt}\n\nReasoning:\n{response_text_1}\n\n{binary_query}"
+        second_prompt = (
+            f"{final_prompt}\n\nReasoning:\n{response_text_1}\n\n{binary_query}"
+        )
         response_text_2, usage_2 = llm_client.get_response(
             prompt=second_prompt,
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose
+            verbose=verbose,
         )
 
         usage_1.prompt_tokens += usage_2.prompt_tokens
@@ -240,7 +239,7 @@ def generate_binary_classification_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose
+            verbose=verbose,
         )
         return response_text, usage
 
@@ -254,7 +253,7 @@ def process_verbatims_for_binary_criteria(
     reasoning_query,
     binary_query,
     reasoning=False,
-    verbose=False
+    verbose=False,
 ):
     """
     Loops over each verbatim and each (theme_name, theme_description) in codebooks.
@@ -281,8 +280,7 @@ def process_verbatims_for_binary_criteria(
 
             # Build the final prompt
             final_prompt = prompt_template.format(
-                verbatim_text=verbatim_text,
-                codebook=codebook
+                verbatim_text=verbatim_text, codebook=codebook
             )
 
             try:
@@ -294,7 +292,7 @@ def process_verbatims_for_binary_criteria(
                     binary_query=binary_query,
                     reasoning=reasoning,
                     temperature=0.0001,
-                    verbose=verbose
+                    verbose=verbose,
                 )
 
                 # Track usage/cost if usage is returned
@@ -311,32 +309,28 @@ def process_verbatims_for_binary_criteria(
                 # parse the numeric classification (0 or 1)
                 score = extract_code_from_response(response_text)
                 if score in [0, 1]:
-                    results.append({
-                        'Verbatim': verbatim_text,
-                        'Theme': theme_name,
-                        'Score': score
-                    })
+                    results.append(
+                        {"Verbatim": verbatim_text, "Theme": theme_name, "Score": score}
+                    )
                 else:
-                    results.append({
-                        'Verbatim': verbatim_text,
-                        'Theme': theme_name,
-                        'Score': None
-                    })
+                    results.append(
+                        {"Verbatim": verbatim_text, "Theme": theme_name, "Score": None}
+                    )
 
             except Exception as e:
                 print(f"Error processing Verbatim {idx+1} / Theme '{theme_name}': {e}")
-                results.append({
-                    'Verbatim': verbatim_text,
-                    'Theme': theme_name,
-                    'Score': None
-                })
+                results.append(
+                    {"Verbatim": verbatim_text, "Theme": theme_name, "Score": None}
+                )
 
         # Store usage/cost for this verbatim
-        verbatim_costs.append({
-            'Verbatim': verbatim_text,
-            'Tokens Used': verbatim_tokens_used,
-            'Cost': verbatim_cost
-        })
+        verbatim_costs.append(
+            {
+                "Verbatim": verbatim_text,
+                "Tokens Used": verbatim_tokens_used,
+                "Cost": verbatim_cost,
+            }
+        )
 
     print("\n=== Processing Complete ===")
     print(f"Total Tokens Used: {total_tokens_used}")

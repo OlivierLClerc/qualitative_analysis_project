@@ -1,6 +1,7 @@
 # utils.py
 import csv
 
+
 def save_results_to_csv(coding, save_path, fieldnames=None, verbatims=None):
     """
     Saves coding results and verbatims to a CSV file.
@@ -39,22 +40,23 @@ def save_results_to_csv(coding, save_path, fieldnames=None, verbatims=None):
         else:
             verbatim = None
         if isinstance(code, dict):
-            row = {'Verbatim': verbatim, **code}
+            row = {"Verbatim": verbatim, **code}
         else:
-            row = {'Verbatim': verbatim, 'Code': code}
+            row = {"Verbatim": verbatim, "Code": code}
         rows.append(row)
 
     # Determine fieldnames if not provided
     if not fieldnames:
         fieldnames = list(rows[0].keys())
     else:
-        fieldnames = ['Verbatim'] + fieldnames
+        fieldnames = ["Verbatim"] + fieldnames
 
-    with open(save_path, 'w', newline='', encoding='utf-8') as f:
+    with open(save_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
     print(f"Results saved to: {save_path}")
+
 
 def load_results_from_csv(load_path):
     """
@@ -81,13 +83,13 @@ def load_results_from_csv(load_path):
     """
     verbatims = []
     coding = []
-    with open(load_path, 'r', newline='', encoding='utf-8') as f:
+    with open(load_path, "r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
         for row in reader:
-            if 'Verbatim' in fieldnames:
-                verbatims.append(row['Verbatim'])
-                code = {k: row[k] for k in fieldnames if k != 'Verbatim'}
+            if "Verbatim" in fieldnames:
+                verbatims.append(row["Verbatim"])
+                code = {k: row[k] for k in fieldnames if k != "Verbatim"}
             else:
                 code = row
             coding.append(code)

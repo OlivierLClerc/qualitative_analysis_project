@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import openai
 from together import Together
 
+
 class LLMClient(ABC):
     """
     Abstract base class for language model clients.
@@ -32,6 +33,7 @@ class LLMClient(ABC):
             NotImplementedError: If the method is not implemented in the subclass.
         """
         pass
+
 
 class OpenAILLMClient(LLMClient):
     """
@@ -98,9 +100,9 @@ class OpenAILLMClient(LLMClient):
             )
         """
         # Extract parameters or set defaults
-        temperature = kwargs.get('temperature', 0)
-        max_tokens = kwargs.get('max_tokens', 500)
-        verbose = kwargs.get('verbose', False)
+        temperature = kwargs.get("temperature", 0)
+        max_tokens = kwargs.get("max_tokens", 500)
+        verbose = kwargs.get("verbose", False)
 
         if verbose:
             print(f"Prompt:\n{prompt}\n")
@@ -109,10 +111,10 @@ class OpenAILLMClient(LLMClient):
             model=model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ],
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
         )
 
         if verbose:
@@ -149,6 +151,7 @@ class OpenAILLMClient(LLMClient):
     #     )
     #     embedding = response['data'][0]['embedding']
     #     return embedding
+
 
 class TogetherLLMClient(LLMClient):
     """
@@ -203,9 +206,9 @@ class TogetherLLMClient(LLMClient):
                 max_tokens=50
             )
         """
-        temperature = kwargs.get('temperature', 0.7)
-        max_tokens = kwargs.get('max_tokens', 500)
-        verbose = kwargs.get('verbose', False)
+        temperature = kwargs.get("temperature", 0.7)
+        max_tokens = kwargs.get("max_tokens", 500)
+        verbose = kwargs.get("verbose", False)
 
         if verbose:
             print(f"Prompt:\n{prompt}\n")
@@ -214,13 +217,14 @@ class TogetherLLMClient(LLMClient):
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
         )
 
         if verbose:
             print(f"Generation:\n{response.choices[0].message.content}\n")
 
         return response.choices[0].message.content.strip()
+
 
 def get_llm_client(provider, config):
     """
@@ -251,15 +255,13 @@ def get_llm_client(provider, config):
         }
         client = get_llm_client(provider='together', config=config)
     """
-    if provider == 'azure':
+    if provider == "azure":
         return OpenAILLMClient(
-            api_key=config['api_key'],
-            endpoint=config['endpoint'],
-            api_version=config['api_version']
+            api_key=config["api_key"],
+            endpoint=config["endpoint"],
+            api_version=config["api_version"],
         )
-    elif provider == 'Together':
-        return TogetherLLMClient(
-            api_key=config['api_key']
-        )
+    elif provider == "Together":
+        return TogetherLLMClient(api_key=config["api_key"])
     else:
         raise ValueError(f"Unknown provider: {provider}")

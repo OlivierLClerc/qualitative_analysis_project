@@ -1,6 +1,7 @@
 # cost_estimation.py
 from qualitative_analysis.config import MODEL_PRICES
 
+
 def openai_api_calculate_cost(usage, model="gpt-4o"):
     """
     Calculate the cost of API usage based on token consumption.

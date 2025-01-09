@@ -4,10 +4,13 @@ import streamlit as st
 import pandas as pd
 
 from qualitative_analysis.data_processing import (
-    load_data, clean_and_normalize, sanitize_dataframe
+    load_data,
+    clean_and_normalize,
+    sanitize_dataframe,
 )
 from qualitative_analysis.prompt_construction import (
-    build_data_format_description, construct_prompt
+    build_data_format_description,
+    construct_prompt,
 )
 from qualitative_analysis.model_interaction import get_llm_client
 from qualitative_analysis.response_parsing import parse_llm_response
@@ -16,24 +19,25 @@ from qualitative_analysis.evaluation import compute_cohens_kappa
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
 import qualitative_analysis.config as config
 
+
 class QualitativeAnalysisApp:
     def __init__(self):
         # Initialize from session_state or default
-        self.data = st.session_state.get('data', None)
-        self.processed_data = st.session_state.get('processed_data', None)
-        
-        self.selected_columns = st.session_state.get('selected_columns', [])
-        self.column_renames = st.session_state.get('column_renames', {})
-        self.column_descriptions = st.session_state.get('column_descriptions', {})
-        
-        self.codebook = st.session_state.get('codebook', "")
-        self.examples = st.session_state.get('examples', "")
-        
+        self.data = st.session_state.get("data", None)
+        self.processed_data = st.session_state.get("processed_data", None)
+
+        self.selected_columns = st.session_state.get("selected_columns", [])
+        self.column_renames = st.session_state.get("column_renames", {})
+        self.column_descriptions = st.session_state.get("column_descriptions", {})
+
+        self.codebook = st.session_state.get("codebook", "")
+        self.examples = st.session_state.get("examples", "")
+
         self.llm_client = None  # will instantiate later
-        self.selected_model = st.session_state.get('selected_model', None)
-        
-        self.selected_fields = st.session_state.get('selected_fields', [])
-        self.results = st.session_state.get('results', [])
+        self.selected_model = st.session_state.get("selected_model", None)
+
+        self.selected_fields = st.session_state.get("selected_fields", [])
+        self.results = st.session_state.get("results", [])
 
     def run(self):
         st.title("Qualitative Analysis")
@@ -64,23 +68,25 @@ class QualitativeAnalysisApp:
     def upload_dataset(self):
         st.header("Step 1: Upload Your Dataset")
         uploaded_file = st.file_uploader("Upload CSV or XLSX", type=["csv", "xlsx"])
-        
+
         if uploaded_file is not None:
             file_type = "csv" if uploaded_file.name.endswith(".csv") else "xlsx"
             delimiter = st.text_input("CSV Delimiter (if CSV)", value=";")
 
             try:
-                data = load_data(uploaded_file, file_type=file_type, delimiter=delimiter)
-                st.session_state['selected_columns'] = []
-                st.session_state['column_renames'] = {}
-                st.session_state['column_descriptions'] = {}
+                data = load_data(
+                    uploaded_file, file_type=file_type, delimiter=delimiter
+                )
+                st.session_state["selected_columns"] = []
+                st.session_state["column_renames"] = {}
+                st.session_state["column_descriptions"] = {}
 
                 st.success("Data loaded successfully!")
                 st.write("Data Preview:", data.head())
 
                 # Store in session_state + local attribute
                 self.data = data
-                st.session_state['data'] = data
+                st.session_state["data"] = data
 
             except Exception as e:
                 st.error(f"Error loading data: {e}")
@@ -88,15 +94,15 @@ class QualitativeAnalysisApp:
 
     def select_rename_describe_columns(self):
         st.header("Step 2: Select, Rename, and Describe Columns")
-        
+
         if self.data is None:
             st.error("No dataset loaded.")
             return
-        
+
         columns = self.data.columns.tolist()
 
         # Pull from session_state
-        previous_selection = st.session_state.get('selected_columns', [])
+        previous_selection = st.session_state.get("selected_columns", [])
         # Filter out invalid columns
         valid_previous_selection = [col for col in previous_selection if col in columns]
 
@@ -104,50 +110,58 @@ class QualitativeAnalysisApp:
         self.selected_columns = st.multiselect(
             "Columns to include:",
             options=columns,
-            default=valid_previous_selection if valid_previous_selection else columns
+            default=valid_previous_selection if valid_previous_selection else columns,
         )
-        st.session_state['selected_columns'] = self.selected_columns
+        st.session_state["selected_columns"] = self.selected_columns
 
         if not self.selected_columns:
             st.info("Select at least one column to proceed.")
             return
-        
+
         # Rename columns
         for col in self.selected_columns:
             default_rename = self.column_renames.get(col, col)
             new_name = st.text_input(f"Rename '{col}' to:", value=default_rename)
             self.column_renames[col] = new_name
-        st.session_state['column_renames'] = self.column_renames
-        
+        st.session_state["column_renames"] = self.column_renames
+
         # Descriptions
         st.write("Add a short description for each selected column:")
         for col in self.selected_columns:
             col_key = self.column_renames[col]
             default_desc = self.column_descriptions.get(col_key, "")
-            desc = st.text_area(f"Description for '{col_key}':", height=70, value=default_desc)
+            desc = st.text_area(
+                f"Description for '{col_key}':", height=70, value=default_desc
+            )
             self.column_descriptions[col_key] = desc
-        st.session_state['column_descriptions'] = self.column_descriptions
+        st.session_state["column_descriptions"] = self.column_descriptions
 
         # Process & sanitize
         if self.selected_columns:
-            processed = self.data[self.selected_columns].rename(columns=self.column_renames)
-            
+            processed = self.data[self.selected_columns].rename(
+                columns=self.column_renames
+            )
+
             st.write("Which columns do you want to clean & normalize?")
-            text_cols = st.multiselect("Text columns:", processed.columns.tolist(), default=processed.columns.tolist())
+            text_cols = st.multiselect(
+                "Text columns:",
+                processed.columns.tolist(),
+                default=processed.columns.tolist(),
+            )
 
             for tcol in text_cols:
                 processed[tcol] = clean_and_normalize(processed[tcol])
             processed = sanitize_dataframe(processed)
-            
+
             self.processed_data = processed
-            st.session_state['processed_data'] = processed
+            st.session_state["processed_data"] = processed
 
             # Rebuild column_descriptions to only include renamed columns
             updated_column_descriptions = {}
             for col in self.processed_data.columns:
                 updated_column_descriptions[col] = self.column_descriptions.get(col, "")
             self.column_descriptions = updated_column_descriptions
-            st.session_state['column_descriptions'] = self.column_descriptions
+            st.session_state["column_descriptions"] = self.column_descriptions
 
             st.success("Columns processed successfully!")
             st.write("Processed Data Preview:")
@@ -155,65 +169,81 @@ class QualitativeAnalysisApp:
 
     def codebook_and_examples(self):
         st.header("Step 3: Codebook & Examples")
-        default_codebook = st.session_state.get('codebook', "")
-        default_examples = st.session_state.get('examples', "")
-        
-        codebook_val = st.text_area("Codebook / Instructions for LLM:", value=default_codebook)
+        default_codebook = st.session_state.get("codebook", "")
+        default_examples = st.session_state.get("examples", "")
+
+        codebook_val = st.text_area(
+            "Codebook / Instructions for LLM:", value=default_codebook
+        )
         examples_val = st.text_area("Examples (Optional):", value=default_examples)
-        
+
         self.codebook = codebook_val
         self.examples = examples_val
 
-        st.session_state['codebook'] = codebook_val
-        st.session_state['examples'] = examples_val
+        st.session_state["codebook"] = codebook_val
+        st.session_state["examples"] = examples_val
 
     def select_fields(self):
         st.header("Step 4: Fields to Extract")
         default_fields = ",".join(self.selected_fields) if self.selected_fields else ""
-        fields_str = st.text_input("Comma-separated fields (e.g. 'Evaluation, Comments')", value=default_fields)
+        fields_str = st.text_input(
+            "Comma-separated fields (e.g. 'Evaluation, Comments')", value=default_fields
+        )
         extracted = [f.strip() for f in fields_str.split(",") if f.strip()]
-        
+
         self.selected_fields = extracted
-        st.session_state['selected_fields'] = extracted
+        st.session_state["selected_fields"] = extracted
 
     def configure_llm(self):
         st.header("Step 5: Choose the Model")
-        
-        provider_options = ['OpenAI', 'Together']
-        selected_provider_display = st.selectbox("Select LLM Provider:", provider_options)
 
-        provider_map = {
-            "OpenAI": "azure",
-            "Together": "together"
-        }
+        provider_options = ["OpenAI", "Together"]
+        selected_provider_display = st.selectbox(
+            "Select LLM Provider:", provider_options
+        )
+
+        provider_map = {"OpenAI": "azure", "Together": "together"}
         internal_provider = provider_map[selected_provider_display]
 
         if internal_provider not in config.MODEL_CONFIG:
             st.error(f"Missing configuration for provider: {internal_provider}")
             return
 
-        if selected_provider_display == 'OpenAI':
+        if selected_provider_display == "OpenAI":
             model_options = ["gpt-4o", "gpt-4o-mini"]
         else:
             model_options = ["together/gpt-neoxt-chat-20B"]
 
-        default_model = self.selected_model if self.selected_model in model_options else model_options[0]
-        chosen_model = st.selectbox("Select Model:", model_options, index=model_options.index(default_model) if default_model in model_options else 0)
+        default_model = (
+            self.selected_model
+            if self.selected_model in model_options
+            else model_options[0]
+        )
+        chosen_model = st.selectbox(
+            "Select Model:",
+            model_options,
+            index=(
+                model_options.index(default_model)
+                if default_model in model_options
+                else 0
+            ),
+        )
 
         self.selected_model = chosen_model
-        st.session_state['selected_model'] = chosen_model
+        st.session_state["selected_model"] = chosen_model
 
         self.llm_client = get_llm_client(
-            provider=internal_provider,
-            config=config.MODEL_CONFIG[internal_provider]
+            provider=internal_provider, config=config.MODEL_CONFIG[internal_provider]
         )
 
     def run_analysis(self):
         st.header("Step 6: Run Analysis")
 
         # Always rebuild the data_format_description to ensure it matches the latest renamed columns
-        data_format_description = build_data_format_description(self.column_descriptions)
-        st.session_state['data_format_description'] = data_format_description
+        data_format_description = build_data_format_description(
+            self.column_descriptions
+        )
+        st.session_state["data_format_description"] = data_format_description
 
         if self.processed_data is None or self.processed_data.empty:
             st.warning("No processed data. Please go to Step 2.")
@@ -243,13 +273,15 @@ class QualitativeAnalysisApp:
                 min_value=1,
                 max_value=len(self.processed_data),
                 value=min(10, len(self.processed_data)),
-                step=1
+                step=1,
             )
 
         # Cost Estimation for the First Entry
         if st.button("Estimate price before analysis (will run on one entry)"):
             first_entry = self.processed_data.iloc[0]
-            entry_text_str = "\n".join([f"{col}: {first_entry[col]}" for col in self.processed_data.columns])
+            entry_text_str = "\n".join(
+                [f"{col}: {first_entry[col]}" for col in self.processed_data.columns]
+            )
 
             prompt = construct_prompt(
                 data_format_description=data_format_description,
@@ -258,7 +290,9 @@ class QualitativeAnalysisApp:
                 examples=self.examples,
                 instructions="You are an assistant that evaluates data entries.",
                 selected_fields=self.selected_fields,
-                output_format_example={field: "Sample text" for field in self.selected_fields}
+                output_format_example={
+                    field: "Sample text" for field in self.selected_fields
+                },
             )
 
             try:
@@ -266,16 +300,18 @@ class QualitativeAnalysisApp:
                     prompt=prompt,
                     model=self.selected_model,
                     max_tokens=500,
-                    temperature=0
+                    temperature=0,
                 )
                 cost_for_one = openai_api_calculate_cost(usage, self.selected_model)
                 total_cost_estimate = cost_for_one * num_rows
 
                 st.info(f"Estimated cost for processing one entry: ${cost_for_one:.4f}")
-                st.info(f"Estimated total cost for {num_rows} entries: ${total_cost_estimate:.4f}")
+                st.info(
+                    f"Estimated total cost for {num_rows} entries: ${total_cost_estimate:.4f}"
+                )
 
-                st.session_state['cost_for_one'] = cost_for_one
-                st.session_state['total_cost_estimate'] = total_cost_estimate
+                st.session_state["cost_for_one"] = cost_for_one
+                st.session_state["total_cost_estimate"] = total_cost_estimate
 
             except Exception as e:
                 st.error(f"Error estimating cost: {e}")
@@ -293,7 +329,9 @@ class QualitativeAnalysisApp:
             total = len(data_to_process)
 
             for i, (idx, row) in enumerate(data_to_process.iterrows()):
-                entry_text_str = "\n".join([f"{col}: {row[col]}" for col in data_to_process.columns])
+                entry_text_str = "\n".join(
+                    [f"{col}: {row[col]}" for col in data_to_process.columns]
+                )
 
                 prompt = construct_prompt(
                     data_format_description=data_format_description,
@@ -302,7 +340,9 @@ class QualitativeAnalysisApp:
                     examples=self.examples,
                     instructions="You are an assistant that evaluates data entries.",
                     selected_fields=self.selected_fields,
-                    output_format_example={field: "Your text here" for field in self.selected_fields}
+                    output_format_example={
+                        field: "Your text here" for field in self.selected_fields
+                    },
                 )
 
                 # If debug mode is on, show the prompt
@@ -316,7 +356,7 @@ class QualitativeAnalysisApp:
                         model=self.selected_model,
                         max_tokens=500,
                         temperature=0,
-                        verbose=False
+                        verbose=False,
                     )
                     parsed = parse_llm_response(response, self.selected_fields)
                     results.append({**row.to_dict(), **parsed})
@@ -327,7 +367,7 @@ class QualitativeAnalysisApp:
                 progress_bar.progress((i + 1) / total)
 
             self.results = results
-            st.session_state['results'] = results
+            st.session_state["results"] = results
 
             st.success("Analysis completed!")
             results_df = pd.DataFrame(results)
@@ -340,37 +380,43 @@ class QualitativeAnalysisApp:
                     coding=results,
                     save_path=filename,
                     fieldnames=list(results_df.columns),
-                    verbatims=None
+                    verbatims=None,
                 )
                 st.success(f"Results saved to {filename}")
 
     def compare_with_external_judgments(self):
         st.header("Step 7: Compare with External Judgments (Optional)")
-        comparison_file = st.file_uploader("Upload a comparison dataset (CSV or XLSX)", type=["csv", "xlsx"])
+        comparison_file = st.file_uploader(
+            "Upload a comparison dataset (CSV or XLSX)", type=["csv", "xlsx"]
+        )
 
         if comparison_file is not None:
             file_type = "csv" if comparison_file.name.endswith(".csv") else "xlsx"
-            
+
             # Let the user specify a delimiter for the comparison file if it's CSV
             if file_type == "csv":
-                comp_delimiter = st.text_input("Delimiter for comparison CSV:", value=";")
+                comp_delimiter = st.text_input(
+                    "Delimiter for comparison CSV:", value=";"
+                )
             else:
                 comp_delimiter = None  # not used for XLSX
 
             try:
                 comp_data = load_data(
-                    comparison_file, 
-                    file_type=file_type, 
-                    delimiter=comp_delimiter if comp_delimiter else ";"
+                    comparison_file,
+                    file_type=file_type,
+                    delimiter=comp_delimiter if comp_delimiter else ";",
                 )
                 st.write("Comparison data preview:")
                 st.dataframe(comp_data.head())
 
                 # Retrieve results from session_state if needed
                 if not self.results:
-                    self.results = st.session_state.get('results', [])
+                    self.results = st.session_state.get("results", [])
                 if not self.results:
-                    st.error("No analysis results found. Please run the analysis first.")
+                    st.error(
+                        "No analysis results found. Please run the analysis first."
+                    )
                     return
 
                 results_df = pd.DataFrame(self.results)
@@ -385,12 +431,16 @@ class QualitativeAnalysisApp:
                 comp_key_col = st.selectbox("Comparison Key Column:", comp_columns)
 
                 # Let the user choose which columns from comp_data to keep (besides the key)
-                st.subheader("Select columns from the comparison dataset to include in the merge:")
-                possible_comp_cols = [col for col in comp_columns if col != comp_key_col]
+                st.subheader(
+                    "Select columns from the comparison dataset to include in the merge:"
+                )
+                possible_comp_cols = [
+                    col for col in comp_columns if col != comp_key_col
+                ]
                 selected_comp_cols = st.multiselect(
                     "Columns to import:",
                     possible_comp_cols,
-                    default=possible_comp_cols  # or `[]` if you want none by default
+                    default=possible_comp_cols,  # or `[]` if you want none by default
                 )
 
                 # Convert both sides to string (for consistent merge keys)
@@ -406,7 +456,7 @@ class QualitativeAnalysisApp:
                     comp_data_subset,
                     left_on=llm_key_col,
                     right_on=comp_key_col,
-                    how="inner"
+                    how="inner",
                 )
 
                 st.write("Merged Dataframe:")
@@ -415,10 +465,15 @@ class QualitativeAnalysisApp:
                 st.subheader("Select columns to compute Cohen's Kappa:")
                 merged_columns = merged.columns.tolist()
                 llm_judgment_col = st.selectbox("LLM Judgment Column:", merged_columns)
-                external_judgment_col = st.selectbox("External Judgment Column:", merged_columns)
+                external_judgment_col = st.selectbox(
+                    "External Judgment Column:", merged_columns
+                )
 
                 if st.button("Compute Cohen's Kappa"):
-                    if llm_judgment_col not in merged.columns or external_judgment_col not in merged.columns:
+                    if (
+                        llm_judgment_col not in merged.columns
+                        or external_judgment_col not in merged.columns
+                    ):
                         st.error("Selected columns not found in merged data.")
                         return
 
@@ -448,9 +503,11 @@ class QualitativeAnalysisApp:
             except Exception as e:
                 st.error(f"Error loading comparison file: {e}")
 
+
 def main():
     app = QualitativeAnalysisApp()
     app.run()
+
 
 if __name__ == "__main__":
     main()
