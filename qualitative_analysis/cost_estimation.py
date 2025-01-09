@@ -16,8 +16,8 @@ def openai_api_calculate_cost(usage, model="gpt-4o"):
     if not pricing:
         raise ValueError(f"Invalid model specified: {model}")
 
-    prompt_cost = usage.prompt_tokens * pricing['prompt'] / 1000
-    completion_cost = usage.completion_tokens * pricing['completion'] / 1000
+    prompt_cost = usage.prompt_tokens * pricing["prompt"] / 1000
+    completion_cost = usage.completion_tokens * pricing["completion"] / 1000
     total_cost = round(prompt_cost + completion_cost, 6)
 
     return total_cost

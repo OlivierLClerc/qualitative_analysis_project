@@ -121,6 +121,34 @@ class OpenAILLMClient(LLMClient):
 
         return response.choices[0].message.content.strip(), response.usage
 
+    # def get_embedding(self, input_text, model, **kwargs):
+    #     """
+    #     Retrieves the embedding for the given input text using Azure OpenAI's embeddings endpoint.
+
+    #     Parameters:
+    #         input_text (str): The text to embed.
+    #         model (str): The deployment name of the Azure OpenAI embedding model to use.
+    #         **kwargs: Additional keyword arguments for the OpenAI API call.
+
+    #     Returns:
+    #         list: The embedding vector as a list of floats.
+
+    #     Raises:
+    #         openai.error.OpenAIError: If the API request fails.
+
+    #     Example:
+    #         embedding = client.get_embedding(
+    #             input_text="Sample text to embed.",
+    #             model="text-embedding-ada-002"
+    #         )
+    #     """
+    #     response = openai.embeddings.create(
+    #         input=input_text,
+    #         model=model,
+    #         **kwargs
+    #     )
+    #     embedding = response['data'][0]['embedding']
+    #     return embedding
 
 class TogetherLLMClient(LLMClient):
     """
