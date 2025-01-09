@@ -66,3 +66,68 @@ Conclusion: The cycle is not valid because the answer to the Seek question can b
 
 Validity: 0
 
+
+
+
+
+codebook = {
+"Classification de divergence": 
+    """
+    Codebook :
+
+    Les données se composent d'un texte de référence et d'une question posée par un enfant.
+    Vous devez classer la question dans l'une des catégories suivantes :
+
+    0 : la réponse à la question est indiquée dans le texte.
+    1 : la réponse à la question n'est pas du tout indiquée dans le texte.
+
+    Les erreurs mineures d'orthographe, de grammaire ou de formulation ne doivent pas être pénalisées tant que l'intention de l'entrée est claire et respecte les critères d'inclusion. Concentrez-vous sur le contenu et l'objectif de l'entrée plutôt que sur la perfection linguistique.
+
+    Exemples :
+
+    Exemple 1
+    Texte: Marie Curie est née en Pologne. Elle fait ses études à la faculté des sciences de Paris. Elle fait partie des rares femmes qui y sont admises. Avec son mari Pierre Curie, ils travaillent sur l’étude des rayons X et découvrent deux éléments radioactifs. Le couple reçoit le prix Nobel de physique pour ça. Pendant la Première Guerre mondiale, Marie met en place des ambulances équipées d’appareils de radiologie, ce qui permet de sauver de nombreux blessés. Marie Curie est la première femme à avoir reçu deux prix Nobel: un avec Pierre Curie en physique, et l’autre pour ses recherches en chimie. Elle est morte en 1934.
+    Question: Quand est-elle née ?
+    Réponse: 1
+
+    Exemple 2
+    Texte: Marie Curie est née en Pologne. Elle fait ses études à la faculté des sciences de Paris. Elle fait partie des rares femmes qui y sont admises. Avec son mari Pierre Curie, ils travaillent sur l’étude des rayons X et découvrent deux éléments radioactifs. Le couple reçoit le prix Nobel de physique pour ça. Pendant la Première Guerre mondiale, Marie met en place des ambulances équipées d’appareils de radiologie, ce qui permet de sauver de nombreux blessés. Marie Curie est la première femme à avoir reçu deux prix Nobel: un avec Pierre Curie en physique, et l’autre pour ses recherches en chimie. Elle est morte en 1934.
+    Question: Marie a-t-elle passé toute sa vie en Pologne ?
+    Réponse: 0
+
+    Exemple 3
+    Texte: Marie Curie est née en Pologne. Elle fait ses études à la faculté des sciences de Paris. Elle fait partie des rares femmes qui y sont admises. Avec son mari Pierre Curie, ils travaillent sur l’étude des rayons X et découvrent deux éléments radioactifs. Le couple reçoit le prix Nobel de physique pour ça. Pendant la Première Guerre mondiale, Marie met en place des ambulances équipées d’appareils de radiologie, ce qui permet de sauver de nombreux blessés. Marie Curie est la première femme à avoir reçu deux prix Nobel: un avec Pierre Curie en physique, et l’autre pour ses recherches en chimie. Elle est morte en 1934.
+    Question: Qui est Pierre Curie ?
+    Réponse: 1
+    """
+}
+
+# Define column descriptions
+column_descriptions = (
+    "Texte: Le texte de référence\n"
+    "Question: La question de l'enfant."
+)
+
+# Define queries for multiclass classification and reasoning
+binary_query = "Ne répondez qu'avec le chiffre de classification, rien d'autre"
+reasoning_query = "Générez un raisonnement d'une seule phrase à propos de la classification (ne donnez pas le label de classification)." # used only if reasoning = True
+
+# To be sure to have an integer only when doing 1 call request
+command = (
+    "Ne répondez qu'avec le chiffre de classification, rien d'autre. Les erreurs mineures d'orthographe, de grammaire ou de formulation ne doivent pas être pénalisées tant que l'intention de l'entrée est claire et respecte les critères d'inclusion. Concentrez-vous sur le contenu et l'objectif de l'entrée plutôt que sur la perfection linguistique."
+    if not reasoning
+    else "Les erreurs mineures d'orthographe, de grammaire ou de formulation ne doivent pas être pénalisées tant que l'intention de l'entrée est claire et respecte les critères d'inclusion. Concentrez-vous sur le contenu et l'objectif de l'entrée plutôt que sur la perfection linguistique."
+)
+
+prompt_template = f"""
+Entrée:
+{{verbatim_text}}
+
+Vous devez l'évaluer de la sorte :
+{{codebook}}
+
+Les données sont au format suivant :
+{column_descriptions}
+
+{command}
+"""

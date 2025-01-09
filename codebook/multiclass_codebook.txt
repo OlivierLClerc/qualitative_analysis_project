@@ -1,6 +1,7 @@
-theme_name = "Classification de divergence"
-codebook = """
-Codebook:
+codebook = {
+"Classification de divergence":
+
+"""Codebook:
 
 Les données se composent d'un texte de référence et d'une question posée par un enfant.
 Vous devez classer la question dans l'une des catégories suivantes :
@@ -10,8 +11,7 @@ Vous devez classer la question dans l'une des catégories suivantes :
 2 : la réponse à la question n'est pas du tout indiquée dans le texte.
 
 Les erreurs mineures d'orthographe, de grammaire ou de formulation ne doivent pas être pénalisées tant que l'intention de l'entrée est claire et respecte les critères d'inclusion. Concentrez-vous sur le contenu et l'objectif de l'entrée plutôt que sur la perfection linguistique.
-"""
-examples = """
+
 Exemples:
 
 Exemple 1
@@ -29,8 +29,35 @@ Texte: Marie Curie est née en Pologne. Elle fait ses études à la faculté des
 Question: Qui est Pierre Curie ?
 Réponse: 1
 """
+}
+
 # Define column descriptions
 column_descriptions = (
     "Texte: Le texte de référence\n"
     "Question: La question de l'enfant."
 )
+
+# Define queries for multiclass classification and reasoning
+multiclass_query = "Répondez uniquement avec le chiffre de classification, rien d'autre."
+reasoning_query = "Générez un raisonnement d'une seule phrase à propos de la classification (ne donnez pas le label de classification)." # used only if reasoning = True
+
+# To be sure to have an integer only when doing 1 call request
+command = (
+    "Votre réponse ne doit contenir que le chiffre de classification, rien d'autre."
+    if not reasoning
+    else ""
+)
+
+prompt_template = f"""
+Vous êtes un assistant utile chargé d'évaluer l'entrée suivante :
+
+Entrée:
+{{verbatim_text}}
+
+Vous devez l'évaluer de la sorte :
+{{codebook}}
+Les données sont au format suivant :
+{column_descriptions}
+
+{command}
+"""
