@@ -155,10 +155,10 @@ def process_verbatims(
                     verbatim_cost += cost
 
                 # Parse the classification score
-                score = extract_code_from_response(response_content)
-                if score in valid_scores:
+                label = extract_code_from_response(response_content)
+                if label in valid_scores:
                     results.append(
-                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": score}
+                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": label}
                     )
                 else:
                     results.append(
@@ -307,20 +307,20 @@ def process_verbatims_for_binary_criteria(
                     verbatim_cost += cost
 
                 # parse the numeric classification (0 or 1)
-                score = extract_code_from_response(response_text)
-                if score in [0, 1]:
+                label = extract_code_from_response(response_text)
+                if label in [0, 1]:
                     results.append(
-                        {"Verbatim": verbatim_text, "Theme": theme_name, "Score": score}
+                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": label}
                     )
                 else:
                     results.append(
-                        {"Verbatim": verbatim_text, "Theme": theme_name, "Score": None}
+                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
                     )
 
             except Exception as e:
                 print(f"Error processing Verbatim {idx+1} / Theme '{theme_name}': {e}")
                 results.append(
-                    {"Verbatim": verbatim_text, "Theme": theme_name, "Score": None}
+                    {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
                 )
 
         # Store usage/cost for this verbatim
