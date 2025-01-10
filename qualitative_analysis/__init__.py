@@ -24,6 +24,7 @@ from .notebooks_functions import (
     process_verbatims,
     process_verbatims_for_binary_criteria,
 )
+from .cost_estimation import openai_api_calculate_cost
 from .response_parsing import parse_llm_response, extract_code_from_response
 
 __all__ = [
@@ -44,6 +45,7 @@ __all__ = [
     "process_verbatims",
     "process_verbatims_for_binary_criteria",
     "parse_llm_response",
+    "openai_api_calculate_cost",
     "extract_code_from_response",
     "save_results_to_csv",
     "load_results_from_csv",
