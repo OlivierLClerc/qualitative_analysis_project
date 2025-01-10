@@ -4,6 +4,9 @@ from .data_processing import (
     clean_and_normalize,
     sanitize_dataframe,
     select_and_rename_columns,
+    save_results_to_csv,
+    load_results_from_csv,
+    extract_global_validity,
 )
 from .evaluation import (
     compute_cohens_kappa,
@@ -22,13 +25,13 @@ from .notebooks_functions import (
     process_verbatims_for_binary_criteria,
 )
 from .response_parsing import parse_llm_response, extract_code_from_response
-from .utils import save_results_to_csv, load_results_from_csv
 
 __all__ = [
     "load_data",
     "clean_and_normalize",
     "sanitize_dataframe",
     "select_and_rename_columns",
+    "extract_global_validity",
     "compute_cohens_kappa",
     "compute_all_kappas",
     "plot_confusion_matrices",

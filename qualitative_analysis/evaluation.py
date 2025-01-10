@@ -151,32 +151,35 @@ def plot_confusion_matrices(model_coding, human_annotations, labels):
     plt.show()
 
     # Compare each human rater with every other human rater once (no duplicates)
-    fig, axes = plt.subplots(
-        1, len(raters) * (len(raters) - 1) // 2, figsize=(6 * n_raters, 5)
-    )
-    idx = 0  # Initialize index for subplots
+    if n_raters > 1:
+        fig, axes = plt.subplots(
+            1, len(raters) * (len(raters) - 1) // 2, figsize=(6 * n_raters, 5)
+        )
+        idx = 0  # Initialize index for subplots
 
-    for i in range(len(raters)):
-        for j in range(i + 1, len(raters)):  # Ensure each pair is compared only once
-            rater1, rater2 = raters[i], raters[j]
-            cm = confusion_matrix(
-                human_annotations[rater1], human_annotations[rater2], labels=labels
-            )
+        for i in range(len(raters)):
+            for j in range(
+                i + 1, len(raters)
+            ):  # Ensure each pair is compared only once
+                rater1, rater2 = raters[i], raters[j]
+                cm = confusion_matrix(
+                    human_annotations[rater1], human_annotations[rater2], labels=labels
+                )
 
-            # Plot human vs. human comparison
-            sns.heatmap(
-                cm,
-                annot=True,
-                fmt="d",
-                cmap="Blues",
-                xticklabels=labels,
-                yticklabels=labels,
-                ax=axes[idx],
-            )
-            axes[idx].set_title(f"{rater1} vs {rater2}")
-            axes[idx].set_xlabel(f"{rater2} Annotations")
-            axes[idx].set_ylabel(f"{rater1} Annotations")
-            idx += 1
+                # Plot human vs. human comparison
+                sns.heatmap(
+                    cm,
+                    annot=True,
+                    fmt="d",
+                    cmap="Blues",
+                    xticklabels=labels,
+                    yticklabels=labels,
+                    ax=axes[idx],
+                )
+                axes[idx].set_title(f"{rater1} vs {rater2}")
+                axes[idx].set_xlabel(f"{rater2} Annotations")
+                axes[idx].set_ylabel(f"{rater1} Annotations")
+                idx += 1
 
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        plt.show()
