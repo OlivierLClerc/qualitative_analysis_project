@@ -1,5 +1,5 @@
 # notebooks_functions.py
-from qualitative_analysis.response_parsing import extract_code_from_response
+from qualitative_analysis.parsing import extract_code_from_response
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
 
 

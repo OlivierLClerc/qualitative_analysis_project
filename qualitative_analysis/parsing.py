@@ -1,6 +1,7 @@
-# response_parsing.py
+# parsing.py
 import json
 import re
+import pandas as pd
 
 
 def parse_llm_response(evaluation_text, selected_fields):
@@ -102,3 +103,63 @@ def extract_code_from_response(response_text, prefix=None):
             return int(number_search_result.group())
         else:
             return None
+
+
+def extract_global_validity(
+    results_df,
+    id_pattern=r"Id:\s*(\w+)",
+    label_column="Label",
+    verbatim_column="Verbatim",
+    global_validity_column="Global_Validity",
+    verbatim_output_column="Verbatim",
+):
+    """
+    Extracts the overall validity of each cycle based on sequential binary classification results.
+
+    Parameters:
+    ----------
+    results_df : pd.DataFrame
+        The DataFrame containing the classification results.
+    id_pattern : str, optional
+        Regular expression pattern to extract the 'Id' from the `verbatim_column`.
+        Default is `r'Id:\s*(\w+)'`.
+    label_column : str, optional
+        Name of the column containing the binary classification labels. Default is `'Label'`.
+    verbatim_column : str, optional
+        Name of the column containing the text data. Default is `'Verbatim'`.
+    global_validity_column : str, optional
+        Name of the output column that stores the overall validity result. Default is `'Global_Validity'`.
+    verbatim_output_column : str, optional
+        Name of the output column that stores the combined verbatim text. Default is `'Verbatim'`.
+
+    Returns:
+    -------
+    pd.DataFrame
+        A DataFrame with the extracted ID, combined verbatim text, and overall validity for each cycle.
+    """
+
+    # Extract 'Id' from the specified 'verbatim_column'
+    results_df["Id"] = results_df[verbatim_column].str.extract(id_pattern)
+
+    # Ensure the 'label_column' is of integer type
+    results_df[label_column] = results_df[label_column].astype(int)
+
+    # Group by 'Id' and compute overall validity dynamically
+    global_validity = (
+        results_df.groupby("Id")
+        .apply(
+            lambda x: pd.Series(
+                {
+                    verbatim_output_column: " ".join(
+                        x[verbatim_column].unique()
+                    ),  # Dynamic verbatim output
+                    global_validity_column: (
+                        1 if (x[label_column] == 1).all() else 0
+                    ),  # Dynamic global validity output
+                }
+            )
+        )
+        .reset_index()
+    )
+
+    return global_validity

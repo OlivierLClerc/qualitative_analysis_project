@@ -46,7 +46,7 @@ def openai_api_calculate_cost(usage: UsageProtocol, model: str = "gpt-4o") -> fl
         ...
         >>> usage = MockUsage()
         >>> openai_api_calculate_cost(usage, model="gpt-4o")
-        0.045
+        0.0075
 
     Notes:
         The function assumes that the `MODEL_PRICES` dictionary contains pricing
