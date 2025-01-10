@@ -89,6 +89,9 @@ ENV/
 # output
 .data/output
 
+# mypy ini
+mypy.ini
+
 # PyCharm
 .idea/
 
