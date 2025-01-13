@@ -1,10 +1,35 @@
-# parsing.py
+"""
+parsing.py
+
+This module provides functions for parsing and extracting structured information from language model responses
+and classification results. It is designed to handle text outputs, particularly in JSON format, and extract 
+key data for further analysis.
+
+Dependencies:
+    - json: For parsing JSON-formatted text.
+    - re: For regular expressions used in pattern matching.
+    - pandas: For handling and processing tabular data.
+
+Functions:
+    - parse_llm_response(evaluation_text, selected_fields): 
+        Extracts specific fields from a JSON object within a language model response.
+
+    - extract_code_from_response(response_text, prefix=None): 
+        Extracts an integer code from a language model response, with optional prefix matching.
+
+    - extract_global_validity(results_df, id_pattern=r"Id:\s*(\w+)", label_column="Label", 
+                              verbatim_column="Verbatim", global_validity_column="Global_Validity", 
+                              verbatim_output_column="Verbatim"): 
+        Aggregates binary classification results to determine the overall validity of grouped entries.
+"""
+
 import json
 import re
 import pandas as pd
+from typing import Optional
 
 
-def parse_llm_response(evaluation_text, selected_fields):
+def parse_llm_response(evaluation_text: str, selected_fields: list) -> dict:
     """
     Parses a language model's response to extract specified fields from a JSON object.
 
@@ -13,32 +38,48 @@ def parse_llm_response(evaluation_text, selected_fields):
     the `selected_fields`. If no JSON object is found or parsing fails, it returns a dictionary
     with `None` values for each selected field.
 
-    This function is suitable for handling responses from applications like Streamlit
+    This function is useful for handling responses from applications like Streamlit,
     where the language model is instructed to return responses in JSON format.
 
     Parameters:
-        evaluation_text (str): The full text response from the language model.
-        selected_fields (list): A list of field names (strings) to extract from the JSON object.
+    ----------
+    evaluation_text : str
+        The full text response from the language model.
+
+    selected_fields : list
+        A list of field names (strings) to extract from the JSON object.
 
     Returns:
-        dict: A dictionary where each key is a field from `selected_fields` and each value
-              is the corresponding value from the JSON object or `None` if not found or parsing failed.
+    -------
+    dict
+        A dictionary where each key is a field from `selected_fields` and each value
+        is the corresponding value from the JSON object or `None` if not found or parsing failed.
 
     Raises:
-        ValueError: If no JSON object is found in the `evaluation_text`.
+    ------
+    ValueError
+        If no JSON object is found in the `evaluation_text`.
 
-    Example:
-        evaluation_text = '''
-        Here is the evaluation of your entry:
-        {
-            "Evaluation": "Positive",
-            "Comments": "Well-written and insightful."
-        }
-        Thank you!
-        '''
-        selected_fields = ['Evaluation', 'Comments']
-        result = parse_llm_response(evaluation_text, selected_fields)
-        # result => {'Evaluation': 'Positive', 'Comments': 'Well-written and insightful.'}
+    Examples:
+    --------
+    >>> evaluation_text = '''
+    ... Here is the evaluation of your entry:
+    ... {
+    ...     "Evaluation": "Positive",
+    ...     "Comments": "Well-written and insightful."
+    ... }
+    ... Thank you!
+    ... '''
+    >>> selected_fields = ['Evaluation', 'Comments']
+    >>> parse_llm_response(evaluation_text, selected_fields)
+    {'Evaluation': 'Positive', 'Comments': 'Well-written and insightful.'}
+
+    >>> incomplete_text = '''
+    ... Response without a valid JSON.
+    ... '''
+    >>> parse_llm_response(incomplete_text, selected_fields)
+    Error parsing LLM response: No JSON object found in the LLM response.
+    {'Evaluation': None, 'Comments': None}
     """
     try:
         # Search for a JSON object within the evaluation_text
@@ -63,33 +104,73 @@ def parse_llm_response(evaluation_text, selected_fields):
         return {field: None for field in selected_fields}
 
 
-def extract_code_from_response(response_text, prefix=None):
+def extract_code_from_response(
+    response_text: str, prefix: Optional[str] = None
+) -> Optional[int]:
     """
     Extracts an integer code from a language model response, optionally requiring a prefix.
 
-    If 'prefix' is specified (e.g., "Validity:"), the function searches for a line matching:
+    If a `prefix` is specified (e.g., "Validity:"), the function searches for a line matching:
         "<prefix> <digits>"
-    case-insensitively, returning the integer. For example, "Validity: 1" -> 1
+    (case-insensitively) and returns the integer.
+    Example: `"Validity: 1"` → `1`
 
-    If no 'prefix' is provided, it falls back to capturing the first integer in the text
-    (e.g., "I think the code is 2" -> 2).
+    If no `prefix` is provided, the function captures the first integer found in the text.
+    Example: `"I think the code is 2"` → `2`
 
     Parameters:
-        response_text (str): The text response from the language model.
-        prefix (str, optional): A string that must precede the integer. Example: "Validity:" or "Score:".
+    ----------
+    response_text : str
+        The text response from the language model.
+
+    prefix : str, optional
+        A string that must precede the integer.
+        Example: `"Validity:"` or `"Score:"`.
 
     Returns:
-        int or None: The extracted integer code if found, otherwise None.
+    -------
+    int or None
+        The extracted integer code if found, otherwise `None`.
+
+    Examples:
+    --------
+    Extracting a code with a specified prefix:
+
+    >>> response_text = "Validity: 1"
+    >>> extract_code_from_response(response_text, prefix="Validity")
+    1
+
+    Handling different formats with colons and hyphens:
+
+    >>> response_text = "Score - 3"
+    >>> extract_code_from_response(response_text, prefix="Score")
+    3
+
+    Extracting the first integer without a prefix:
+
+    >>> response_text = "The final decision is 2."
+    >>> extract_code_from_response(response_text)
+    2
+
+    Handling negative numbers:
+
+    >>> response_text = "Validity: -1"
+    >>> extract_code_from_response(response_text, prefix="Validity")
+    -1
+
+    When no integer is present:
+
+    >>> response_text = "No valid code here."
+    >>> extract_code_from_response(response_text)
+
+    Case-insensitive matching:
+
+    >>> response_text = "validity: 4"
+    >>> extract_code_from_response(response_text, prefix="Validity")
+    4
     """
     if prefix:
-        # Compile a regex pattern with the specified prefix
-        # (?i) makes it case-insensitive
-        # \b ensures word boundary before prefix
-        # \s* matches any whitespace between prefix and colon
-        # [:-]? matches an optional colon or hyphen
-        # \s* matches any whitespace between colon/hyphen and digit
-        # (\d+) captures one or more digits
-        # \s*$ ensures that the digit is at the end of the line
+        # Case-insensitive search for the prefix followed by an integer
         pattern = rf"(?i)\b{re.escape(prefix)}\s*[:\-]?\s*([+-]?\d+)\s*$"
         match = re.search(pattern, response_text, re.MULTILINE)
         if match:
@@ -97,7 +178,7 @@ def extract_code_from_response(response_text, prefix=None):
         else:
             return None
     else:
-        # Capture the first integer in the text, including negatives
+        # Search for the first standalone integer if no prefix is given
         number_search_result = re.search(r"[+-]?\d+", response_text)
         if number_search_result:
             return int(number_search_result.group())
@@ -106,45 +187,68 @@ def extract_code_from_response(response_text, prefix=None):
 
 
 def extract_global_validity(
-    results_df,
-    id_pattern=r"Id:\s*(\w+)",
-    label_column="Label",
-    verbatim_column="Verbatim",
-    global_validity_column="Global_Validity",
-    verbatim_output_column="Verbatim",
-):
+    results_df: pd.DataFrame,
+    id_pattern: str = r"Id:\s*(\w+)",
+    label_column: str = "Label",
+    verbatim_column: str = "Verbatim",
+    global_validity_column: str = "Global_Validity",
+    verbatim_output_column: str = "Verbatim",
+) -> pd.DataFrame:
     """
     Extracts the overall validity of each cycle based on sequential binary classification results.
+
+    This function groups classification results by a unique identifier (`Id`) and evaluates whether all
+    associated binary labels are positive (`1`). It also aggregates corresponding verbatim comments.
 
     Parameters:
     ----------
     results_df : pd.DataFrame
-        The DataFrame containing the classification results.
+        DataFrame containing the classification results with binary labels and verbatim comments.
+
     id_pattern : str, optional
-        Regular expression pattern to extract the 'Id' from the `verbatim_column`.
-        Default is `r'Id:\s*(\w+)'`.
+        Regular expression pattern to extract the `Id` from the `verbatim_column`.
+        Default is `r'Id:\\s*(\\w+)'`.
+
     label_column : str, optional
-        Name of the column containing the binary classification labels. Default is `'Label'`.
+        Column name containing binary classification labels (`0` or `1`). Default is `'Label'`.
+
     verbatim_column : str, optional
-        Name of the column containing the text data. Default is `'Verbatim'`.
+        Column name containing the text data or verbatim comments. Default is `'Verbatim'`.
+
     global_validity_column : str, optional
-        Name of the output column that stores the overall validity result. Default is `'Global_Validity'`.
+        Column name for the output column that stores the overall validity result. Default is `'Global_Validity'`.
+
     verbatim_output_column : str, optional
-        Name of the output column that stores the combined verbatim text. Default is `'Verbatim'`.
+        Column name for the output column that stores aggregated verbatim comments. Default is `'Verbatim'`.
 
     Returns:
     -------
     pd.DataFrame
-        A DataFrame with the extracted ID, combined verbatim text, and overall validity for each cycle.
-    """
+        A DataFrame grouped by `Id` with two columns:
+        - `{verbatim_output_column}`: Aggregated verbatim comments.
+        - `{global_validity_column}`: `1` if all labels are `1`, otherwise `0`.
 
+    Example:
+    -------
+    >>> import pandas as pd
+    >>> data = {
+    ...     'Verbatim': ['Id: A Comment 1', 'Id: A Comment 2', 'Id: B Comment 3', 'Id: B Comment 4'],
+    ...     'Label': [1, 1, 1, 0]
+    ... }
+    >>> df = pd.DataFrame(data)
+    >>> result = extract_global_validity(df)
+    >>> result[['Id', 'Verbatim', 'Global_Validity']]
+      Id                         Verbatim  Global_Validity
+    0  A  Id: A Comment 1 Id: A Comment 2                1
+    1  B  Id: B Comment 3 Id: B Comment 4                0
+    """
     # Extract 'Id' from the specified 'verbatim_column'
     results_df["Id"] = results_df[verbatim_column].str.extract(id_pattern)
 
     # Ensure the 'label_column' is of integer type
     results_df[label_column] = results_df[label_column].astype(int)
 
-    # Group by 'Id' and compute overall validity dynamically
+    # Group by 'Id' and compute overall validity and aggregated verbatim text
     global_validity = (
         results_df.groupby("Id")
         .apply(
@@ -152,10 +256,10 @@ def extract_global_validity(
                 {
                     verbatim_output_column: " ".join(
                         x[verbatim_column].unique()
-                    ),  # Dynamic verbatim output
+                    ),  # Aggregated unique verbatim comments
                     global_validity_column: (
                         1 if (x[label_column] == 1).all() else 0
-                    ),  # Dynamic global validity output
+                    ),  # 1 if all labels are 1, else 0
                 }
             )
         )

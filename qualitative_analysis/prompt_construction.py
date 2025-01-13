@@ -1,28 +1,43 @@
+"""
 # prompt_construction.py
+
+This module provides utility functions for constructing prompts to be used with language models.  
+It facilitates the generation of detailed and structured prompts by combining data format descriptions, entry texts, codebooks, examples, and specific output formatting instructions.
+
+Dependencies:
+    - json
+
+Functions:
+    - build_data_format_description(column_descriptions):  
+      Generates a human-readable description of data columns based on a dictionary of column names and their descriptions.
+
+    - construct_prompt(data_format_description, entry_text, codebook, examples, instructions, selected_fields=None, output_format_example=None, output_format_instructions=None, json_output=True):  
+      Builds a comprehensive prompt for a language model by combining data descriptions, input text, coding guidelines, examples, and formatting instructions for the model's response.
+"""
+
 import json
+from typing import Optional, List, Dict, Any
 
 
-def build_data_format_description(column_descriptions):
+def build_data_format_description(column_descriptions: dict[str, str]) -> str:
     """
     Builds a textual description of the data format based on column descriptions.
 
-    This function takes a dictionary of column descriptions and constructs a formatted string
-    that describes each column, which can be included in prompts for language models.
+    This function takes a dictionary where keys are column names and values are descriptions
+    of those columns. It constructs a formatted string describing the data structure, which
+    can be used in prompts for language models.
 
     Parameters:
-        column_descriptions (dict): A dictionary where keys are column names and values are
-                                    descriptions of those columns.
+    ----------
+    column_descriptions : dict[str, str]
+        A dictionary where:
+        - **Key**: Column name (str)
+        - **Value**: Description of the column (str)
 
     Returns:
-        str: A formatted string describing the data columns.
-
-    Example:
-        column_descriptions = {
-            'ID': 'Unique identifier for each entry',
-            'Text': 'The main text content to analyze',
-            'Category': 'The category assigned to the text'
-        }
-        data_format_description = build_data_format_description(column_descriptions)
+    -------
+    str
+        A formatted string describing the dataset's columns.
     """
     description = "The data has the following columns:\n"
     for col, desc in column_descriptions.items():
@@ -31,59 +46,63 @@ def build_data_format_description(column_descriptions):
 
 
 def construct_prompt(
-    data_format_description,
-    entry_text,
-    codebook,
-    examples,
-    instructions,
-    selected_fields=None,
-    output_format_example=None,
-    output_format_instructions=None,
-    json_output=True,
-):
+    data_format_description: str,
+    entry_text: str,
+    codebook: str,
+    examples: str,
+    instructions: str,
+    selected_fields: Optional[List[str]] = None,
+    output_format_example: Optional[Dict[str, Any]] = None,
+    output_format_instructions: Optional[str] = None,
+    json_output: bool = True,
+) -> str:
     """
     Constructs a prompt for a language model based on provided components.
 
     This function assembles various elements such as data format descriptions, entry text,
     codebooks, examples, and instructions into a single prompt string that can be used
-    with a language model to generate responses.
+    with a language model to generate structured responses.
 
     Parameters:
-        data_format_description (str): A description of the data format, typically generated
-                                       by `build_data_format_description`.
-        entry_text (str): The text of the data entry to be evaluated by the language model.
-        codebook (str): Instructions or guidelines (codebook) that the language model should
-                        follow when evaluating the entry.
-        examples (str): Examples of how entries should be evaluated or formatted.
-        instructions (str): General instructions for the language model.
-        selected_fields (list, optional): A list of fields that the language model should include
-                                          in its response. Default is None.
-        output_format_example (dict, optional): An example of the expected output format, provided
-                                                as a dictionary. Default is None.
-        output_format_instructions (str, optional): Specific instructions regarding the output format.
-                                                   If not provided, a default instruction is generated
-                                                   based on `selected_fields` and `output_format_example`.
+    ----------
+    data_format_description : str
+        Description of the dataset's format, usually from `build_data_format_description`.
+
+    entry_text : str
+        The text entry that the model is tasked to evaluate.
+
+    codebook : str
+        Set of rules or guidelines the model must follow during evaluation.
+
+    examples : str
+        Example evaluations to guide the model's output format and logic.
+
+    instructions : str
+        General task instructions for the language model.
+
+    selected_fields : Optional[List[str]], optional
+        Fields that must appear in the model's output. Default is `None`.
+
+    output_format_example : Optional[Dict[str, Any]], optional
+        Example of the expected output structure in dictionary format. Default is `None`.
+
+    output_format_instructions : Optional[str], optional
+        Specific instructions for formatting the model's output.
+        If `None`, default instructions are generated using `selected_fields`.
+
+    json_output : bool, optional (default=True)
+        If `True`, enforces JSON-only output. If `False`, allows free text.
 
     Returns:
-        str: The constructed prompt string to be used with a language model.
-
-    Example:
-        data_format_description = build_data_format_description(column_descriptions)
-        prompt = construct_prompt(
-            data_format_description=data_format_description,
-            entry_text=entry_text,
-            codebook=codebook,
-            examples=examples,
-            instructions="You are an assistant that evaluates text entries.",
-            selected_fields=['Evaluation', 'Comments'],
-            output_format_example={'Evaluation': 'Positive', 'Comments': 'Well-written entry.'}
-        )
+    -------
+    str
+        A well-structured prompt to guide the language model's response.
     """
-    # If selected_fields is not provided, default to an empty list
+    # Default to an empty list if no fields are provided
     if selected_fields is None:
         selected_fields = []
 
-    # If user doesn't want JSON output
+    # Generate default JSON output instructions if none are provided
     if json_output:
         if output_format_instructions is None:
             output_format_instructions = f"""
@@ -95,6 +114,7 @@ def construct_prompt(
 {json.dumps(output_format_example, ensure_ascii=False, indent=2)}
 """
 
+    # Assemble the prompt
     prompt = f"""
 {instructions}
 

@@ -1,27 +1,87 @@
-# notebooks_functions.py
+"""
+notebooks_functions.py
+
+This module provides utility functions for generating and processing classification results 
+using large language models (LLMs) for both multiclass and binary classification tasks. 
+It supports reasoning-based classification workflows and calculates token usage costs.
+
+Dependencies:
+    - pandas
+    - qualitative_analysis.parsing (for extracting classification codes)
+    - qualitative_analysis.cost_estimation (for calculating API costs)
+
+Functions:
+    - generate_answer(llm_client, model_name, base_prompt, multiclass_query, reasoning_query, ...):  
+      Generates multiclass classification results with optional reasoning steps.
+
+    - process_verbatims(verbatims_subset, codebooks, llm_client, model_name, prompt_template, ...):  
+      Processes a set of verbatims (text samples) for multiclass classification and tracks API usage costs.
+
+    - generate_binary_classification_answer(llm_client, model_name, final_prompt, reasoning_query, binary_query, ...):  
+      Generates binary classification results (`0` or `1`) with optional reasoning.
+
+    - process_verbatims_for_binary_criteria(verbatims_subset, codebooks, llm_client, model_name, prompt_template, ...):  
+      Processes verbatims for binary classification across multiple themes and calculates token usage costs.
+"""
+
 from qualitative_analysis.parsing import extract_code_from_response
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
+from qualitative_analysis.cost_estimation import UsageProtocol
+from typing import List, Dict, Tuple
 
 
 def generate_answer(
     llm_client,
-    model_name,
-    base_prompt,
-    multiclass_query,
-    reasoning_query,
-    reasoning=False,
-    temperature=0.0001,
-    verbose=False,
-):
+    model_name: str,
+    base_prompt: str,
+    multiclass_query: str,
+    reasoning_query: str,
+    reasoning: bool = False,
+    temperature: float = 0.0001,
+    verbose: bool = False,
+) -> Tuple[str, UsageProtocol]:
     """
-    Generates a classification result for multiclass classification.
+    Generates a classification result for a multiclass task using an LLM.
 
-    If reasoning is False, make one API call:
-        - Base prompt + multiclass query directly.
+    If `reasoning` is False:
+        - A single API call is made with the `base_prompt` and `multiclass_query`.
 
-    If reasoning is True, make two API calls:
-        1) Base prompt + reasoning query (no classification yet).
-        2) Base prompt + reasoning answer_from_first_call + multiclass query.
+    If `reasoning` is True:
+        - Two API calls are made:
+            1. First call with `reasoning_query` for explanation.
+            2. Second call using the reasoning result and `multiclass_query` for classification.
+
+    Parameters:
+    ----------
+    llm_client : object
+        The LLM client used to send prompts and receive responses.
+
+    model_name : str
+        The name of the LLM model to use (e.g., `"gpt-4"`).
+
+    base_prompt : str
+        The initial prompt providing context.
+
+    multiclass_query : str
+        The classification query for multiclass tasks.
+
+    reasoning_query : str
+        The reasoning query to enable step-by-step thinking.
+
+    reasoning : bool, optional (default=False)
+        If True, uses reasoning in the classification process.
+
+    temperature : float, optional (default=0.0001)
+        Controls randomness in the LLM output.
+
+    verbose : bool, optional (default=False)
+        If True, prints reasoning and classification steps.
+
+    Returns:
+    -------
+    Tuple[str, UsageProtocol]
+        - The classification result as a string.
+        - The usage statistics object (tokens used, etc.).
     """
     if reasoning:
         # First call: get reasoning
@@ -32,7 +92,7 @@ def generate_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose,  # Changed from verbose=True
+            verbose=verbose,
         )
 
         if verbose:
@@ -46,7 +106,7 @@ def generate_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose,  # Changed from verbose=True
+            verbose=verbose,
         )
 
         if verbose:
@@ -69,7 +129,7 @@ def generate_answer(
             model=model_name,
             max_tokens=500,
             temperature=temperature,
-            verbose=verbose,  # Changed from verbose=True
+            verbose=verbose,
         )
 
         if verbose:
@@ -79,46 +139,73 @@ def generate_answer(
 
 
 def process_verbatims(
-    verbatims_subset,
-    codebooks,
+    verbatims_subset: List[str],
+    codebooks: Dict[str, str],
     llm_client,
-    model_name,
-    prompt_template,
-    multiclass_query,
-    reasoning_query,
-    valid_scores,
-    reasoning=False,
-    verbose=False,
-):
+    model_name: str,
+    prompt_template: str,
+    multiclass_query: str,
+    reasoning_query: str,
+    valid_scores: List[int],
+    reasoning: bool = False,
+    verbose: bool = False,
+) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
     """
-    Process a subset of verbatims and classify them based on the provided themes
-    and descriptions from the codebooks.
+    Processes and classifies a list of verbatims using the provided LLM.
 
-    Args:
-        verbatims_subset (list): List of verbatim texts to process.
-        codebooks (dict): Dictionary of themes and their descriptions.
-        llm_client: LLM client for generating responses.
-        model_name (str): Model to use for predictions.
-        prompt_template (str): Template to format the prompt.
-        multiclass_query (str): Query for multiclass classification.
-        reasoning_query (str): Query for reasoning (optional).
-        valid_scores (list): List of valid classification scores.
-        reasoning (bool): Whether to include reasoning in the responses.
-        verbose (bool): Whether to print detailed logs.
+    For each verbatim and each theme in the codebooks:
+        - Generates a prompt.
+        - Sends the prompt to the LLM for classification.
+        - Tracks API usage and cost.
+
+    Parameters:
+    ----------
+    verbatims_subset : List[str]
+        A list of verbatim texts to classify.
+
+    codebooks : Dict[str, str]
+        Dictionary of themes and their descriptions.
+
+    llm_client : object
+        The LLM client used for response generation.
+
+    model_name : str
+        The LLM model name to use (e.g., `"gpt-4"`).
+
+    prompt_template : str
+        Template for formatting the prompt.
+
+    multiclass_query : str
+        Query for multiclass classification.
+
+    reasoning_query : str
+        Query for reasoning before classification.
+
+    valid_scores : List[int]
+        Valid classification labels (e.g., `[0, 1, 2]`).
+
+    reasoning : bool, optional (default=False)
+        If True, enables reasoning in classification.
+
+    verbose : bool, optional (default=False)
+        If True, prints progress logs.
 
     Returns:
-        tuple: A list of results and a list of costs per verbatim.
+    -------
+    Tuple[List[Dict[str, object]], List[Dict[str, object]]]
+        - A list of classification results.
+        - A list of usage and cost per verbatim.
     """
     results = []
     verbatim_costs = []
     total_tokens_used = 0
-    total_cost = 0
+    total_cost = 0.0
 
     for idx, verbatim_text in enumerate(verbatims_subset):
         print(f"\n=== Processing Verbatim {idx + 1}/{len(verbatims_subset)} ===")
 
         verbatim_tokens_used = 0
-        verbatim_cost = 0
+        verbatim_cost = 0.0
 
         # For each theme in the codebook dictionary
         for theme_name, codebook in codebooks.items():
@@ -191,17 +278,53 @@ def process_verbatims(
 
 def generate_binary_classification_answer(
     llm_client,
-    model_name,
-    final_prompt,
-    reasoning_query,
-    binary_query,
-    reasoning=False,
-    temperature=0.0001,
-    verbose=False,
-):
+    model_name: str,
+    final_prompt: str,
+    reasoning_query: str,
+    binary_query: str,
+    reasoning: bool = False,
+    temperature: float = 0.0001,
+    verbose: bool = False,
+) -> Tuple[str, UsageProtocol]:
     """
-    Generates a binary classification ('1' or '0').
-    ...
+    Generates a binary classification response ('1' or '0') using a language model.
+
+    - If `reasoning` is False, a single API call is made with `final_prompt` and `binary_query`.
+    - If `reasoning` is True, two API calls are made:
+        1. First, to generate reasoning using `reasoning_query`.
+        2. Second, to classify using the reasoning and `binary_query`.
+
+    Parameters:
+    ----------
+    llm_client : object
+        The LLM client used for making API calls.
+
+    model_name : str
+        The name of the LLM model (e.g., `"gpt-4"`).
+
+    final_prompt : str
+        The base prompt for classification.
+
+    reasoning_query : str
+        Query used to generate reasoning before classification.
+
+    binary_query : str
+        Query asking the model for binary classification.
+
+    reasoning : bool, optional (default=False)
+        Whether to include reasoning in the classification process.
+
+    temperature : float, optional (default=0.0001)
+        Controls the randomness of the model output.
+
+    verbose : bool, optional (default=False)
+        If True, prints intermediate outputs.
+
+    Returns:
+    -------
+    Tuple[str, UsageProtocol]
+        - Classification result (`'1'` or `'0'`).
+        - API usage statistics.
     """
     if reasoning:
         # Two-step approach
@@ -245,32 +368,69 @@ def generate_binary_classification_answer(
 
 
 def process_verbatims_for_binary_criteria(
-    verbatims_subset,
-    codebooks,
+    verbatims_subset: List[str],
+    codebooks: Dict[str, str],
     llm_client,
-    model_name,
-    prompt_template,
-    reasoning_query,
-    binary_query,
-    reasoning=False,
-    verbose=False,
-):
+    model_name: str,
+    prompt_template: str,
+    reasoning_query: str,
+    binary_query: str,
+    reasoning: bool = False,
+    verbose: bool = False,
+) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
     """
-    Loops over each verbatim and each (theme_name, theme_description) in codebooks.
-    For each combination, build a prompt and do a binary classification.
-    ...
+    Processes verbatims and classifies them into binary categories (`0` or `1`) using an LLM.
+
+    For each verbatim and theme in the `codebooks`, the function generates prompts to classify
+    the text into binary labels. Reasoning can optionally be included.
+
+    Parameters:
+    ----------
+    verbatims_subset : List[str]
+        List of verbatim texts to classify.
+
+    codebooks : Dict[str, str]
+        Dictionary of themes and their descriptions.
+
+    llm_client : object
+        The LLM client used for generating responses.
+
+    model_name : str
+        The model to use for classification (e.g., `"gpt-4"`).
+
+    prompt_template : str
+        Template used to build the prompt with verbatims and themes.
+        Example: `"{verbatim_text}\n\nTheme: {codebook}"`
+
+    reasoning_query : str
+        Query used for generating reasoning.
+
+    binary_query : str
+        Query used for binary classification.
+
+    reasoning : bool, optional (default=False)
+        Whether to include reasoning in the classification process.
+
+    verbose : bool, optional (default=False)
+        If True, prints detailed processing logs.
+
+    Returns:
+    -------
+    Tuple[List[Dict[str, object]], List[Dict[str, object]]]
+        - A list of classification results (`'Verbatim'`, `'Theme'`, `'Label'`).
+        - A list of token usage and cost per verbatim.
     """
 
     results = []
     verbatim_costs = []
     total_tokens_used = 0
-    total_cost = 0
+    total_cost = 0.0
 
     for idx, verbatim_text in enumerate(verbatims_subset):
         print(f"\n=== Processing Verbatim {idx+1}/{len(verbatims_subset)} ===")
 
         verbatim_tokens_used = 0
-        verbatim_cost = 0
+        verbatim_cost = 0.0
 
         # For each item in the codebook dictionary
         for theme_name, codebook in codebooks.items():
