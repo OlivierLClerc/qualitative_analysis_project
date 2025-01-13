@@ -1,8 +1,19 @@
-# app.py
+"""
+app.py
+
+A Streamlit application for qualitative data analysis. This app guides users
+through dataset upload, cleaning, LLM-based classification, and optional 
+comparison with external judgments.
+
+Usage:
+    streamlit run app.py
+"""
 
 import streamlit as st
 import pandas as pd
 import qualitative_analysis.config as config
+from typing import Any, Dict, List, Optional
+
 from qualitative_analysis import (
     load_data,
     clean_and_normalize,
@@ -18,25 +29,56 @@ from qualitative_analysis import (
 
 
 class QualitativeAnalysisApp:
-    def __init__(self):
-        # Initialize from session_state or default
-        self.data = st.session_state.get("data", None)
-        self.processed_data = st.session_state.get("processed_data", None)
+    """
+    A Streamlit-based application for qualitative data analysis.
 
-        self.selected_columns = st.session_state.get("selected_columns", [])
-        self.column_renames = st.session_state.get("column_renames", {})
-        self.column_descriptions = st.session_state.get("column_descriptions", {})
+    Attributes:
+        data (pd.DataFrame | None): The original uploaded dataset.
+        processed_data (pd.DataFrame | None): The dataset after cleaning and selected-column processing.
+        selected_columns (List[str]): Columns chosen by the user.
+        column_renames (Dict[str, str]): Mapping from original column names to renamed columns.
+        column_descriptions (Dict[str, str]): Descriptions for each selected/renamed column.
+        codebook (str): Instructions or guidelines for classification.
+        examples (str): Sample examples or demonstrations for the LLM to follow.
+        llm_client (Any | None): The instantiated LLM client (OpenAI or Together).
+                                 (Type depends on your LLM client class.)
+        selected_model (Optional[str]): The chosen model name (e.g., "gpt-4o").
+        selected_fields (List[str]): Fields to extract from the LLM's response.
+        results (List[Dict[str, Any]]): The final results of the analysis.
+    """
 
-        self.codebook = st.session_state.get("codebook", "")
-        self.examples = st.session_state.get("examples", "")
+    def __init__(self) -> None:
+        """
+        Initializes the QualitativeAnalysisApp by pulling default or stored values
+        from Streamlit's session_state.
+        """
+        self.data: Optional[pd.DataFrame] = st.session_state.get("data", None)
+        self.processed_data: Optional[pd.DataFrame] = st.session_state.get(
+            "processed_data", None
+        )
 
-        self.llm_client = None  # will instantiate later
-        self.selected_model = st.session_state.get("selected_model", None)
+        self.selected_columns: List[str] = st.session_state.get("selected_columns", [])
+        self.column_renames: Dict[str, str] = st.session_state.get("column_renames", {})
+        self.column_descriptions: Dict[str, str] = st.session_state.get(
+            "column_descriptions", {}
+        )
 
-        self.selected_fields = st.session_state.get("selected_fields", [])
-        self.results = st.session_state.get("results", [])
+        self.codebook: str = st.session_state.get("codebook", "")
+        self.examples: str = st.session_state.get("examples", "")
 
-    def run(self):
+        self.llm_client: Any = None  # Will instantiate later (OpenAI or Together)
+        self.selected_model: Optional[str] = st.session_state.get(
+            "selected_model", None
+        )
+
+        self.selected_fields: List[str] = st.session_state.get("selected_fields", [])
+        self.results: List[Dict[str, Any]] = st.session_state.get("results", [])
+
+    def run(self) -> None:
+        """
+        Main entry point for the Streamlit app.
+        Executes each analysis step in sequence if the required data is available.
+        """
         st.title("Qualitative Analysis")
 
         # Step 1: Upload Dataset
@@ -62,7 +104,12 @@ class QualitativeAnalysisApp:
             # Step 7: Compare with External Judgments (Optional)
             self.compare_with_external_judgments()
 
-    def upload_dataset(self):
+    def upload_dataset(self) -> None:
+        """
+        Step 1: Uploads a dataset (CSV or XLSX) via Streamlit's file uploader.
+        - Validates file type and delimiter.
+        - Loads data into `self.data` and session_state.
+        """
         st.header("Step 1: Upload Your Dataset")
         uploaded_file = st.file_uploader("Upload CSV or XLSX", type=["csv", "xlsx"])
 
@@ -89,7 +136,13 @@ class QualitativeAnalysisApp:
                 st.error(f"Error loading data: {e}")
                 st.stop()
 
-    def select_rename_describe_columns(self):
+    def select_rename_describe_columns(self) -> None:
+        """
+        Step 2: Lets the user select which columns to include, rename them,
+        and provide descriptions. Also cleans and normalizes text columns.
+
+        Stores processed data in `self.processed_data` and session_state.
+        """
         st.header("Step 2: Select, Rename, and Describe Columns")
 
         if self.data is None:
@@ -139,8 +192,7 @@ class QualitativeAnalysisApp:
                 columns=self.column_renames
             )
 
-            st.write("Which columns do you want to clean & normalize?")
-            text_cols = st.multiselect(
+            text_cols: list[str] = st.multiselect(
                 "Text columns:",
                 processed.columns.tolist(),
                 default=processed.columns.tolist(),
@@ -154,7 +206,7 @@ class QualitativeAnalysisApp:
             st.session_state["processed_data"] = processed
 
             # Rebuild column_descriptions to only include renamed columns
-            updated_column_descriptions = {}
+            updated_column_descriptions: Dict[str, str] = {}
             for col in self.processed_data.columns:
                 updated_column_descriptions[col] = self.column_descriptions.get(col, "")
             self.column_descriptions = updated_column_descriptions
@@ -164,7 +216,12 @@ class QualitativeAnalysisApp:
             st.write("Processed Data Preview:")
             st.dataframe(self.processed_data.head())
 
-    def codebook_and_examples(self):
+    def codebook_and_examples(self) -> None:
+        """
+        Step 3: Codebook & Examples
+        Lets the user define or modify the classification codebook and (optionally) examples
+        that guide the LLM in producing structured responses.
+        """
         st.header("Step 3: Codebook & Examples")
         default_codebook = st.session_state.get("codebook", "")
         default_examples = st.session_state.get("examples", "")
@@ -180,7 +237,12 @@ class QualitativeAnalysisApp:
         st.session_state["codebook"] = codebook_val
         st.session_state["examples"] = examples_val
 
-    def select_fields(self):
+    def select_fields(self) -> None:
+        """
+        Step 4: Fields to Extract
+        Allows the user to specify which fields (e.g., 'Evaluation', 'Comments')
+        the LLM should return in its JSON output.
+        """
         st.header("Step 4: Fields to Extract")
         default_fields = ",".join(self.selected_fields) if self.selected_fields else ""
         fields_str = st.text_input(
@@ -191,7 +253,12 @@ class QualitativeAnalysisApp:
         self.selected_fields = extracted
         st.session_state["selected_fields"] = extracted
 
-    def configure_llm(self):
+    def configure_llm(self) -> None:
+        """
+        Step 5: Choose the Model
+        Lets the user select which LLM provider (OpenAI/Azure or Together)
+        and then pick from the available model deployments.
+        """
         st.header("Step 5: Choose the Model")
 
         provider_options = ["OpenAI", "Together"]
@@ -233,7 +300,13 @@ class QualitativeAnalysisApp:
             provider=internal_provider, config=config.MODEL_CONFIG[internal_provider]
         )
 
-    def run_analysis(self):
+    def run_analysis(self) -> None:
+        """
+        Step 6: Run Analysis
+        Uses the selected columns and LLM configuration to perform
+        classification or extraction tasks on the processed data.
+        Allows users to estimate cost, run debug mode, and save results to CSV.
+        """
         st.header("Step 6: Run Analysis")
 
         # Always rebuild the data_format_description to ensure it matches the latest renamed columns
@@ -319,7 +392,7 @@ class QualitativeAnalysisApp:
         # Start Full Analysis
         if st.button("Run Analysis"):
             st.info("Processing entries...")
-            results = []
+            results: List[Dict[str, Any]] = []
             progress_bar = st.progress(0)
 
             data_to_process = self.processed_data.head(num_rows)
@@ -381,7 +454,12 @@ class QualitativeAnalysisApp:
                 )
                 st.success(f"Results saved to {filename}")
 
-    def compare_with_external_judgments(self):
+    def compare_with_external_judgments(self) -> None:
+        """
+        Step 7: Compare with External Judgments (Optional)
+        Allows the user to upload a separate dataset (CSV/XLSX) containing
+        external/human judgments to compare against the LLM-generated results.
+        """
         st.header("Step 7: Compare with External Judgments (Optional)")
         comparison_file = st.file_uploader(
             "Upload a comparison dataset (CSV or XLSX)", type=["csv", "xlsx"]
@@ -421,11 +499,11 @@ class QualitativeAnalysisApp:
                 # Let user pick the key columns from each DataFrame
                 st.subheader("Select key column to merge on (LLM Results)")
                 llm_columns = results_df.columns.tolist()
-                llm_key_col = st.selectbox("LLM Key Column:", llm_columns)
+                llm_key_col: str = st.selectbox("LLM Key Column:", llm_columns)
 
                 st.subheader("Select key column to merge on (Comparison Dataset)")
                 comp_columns = comp_data.columns.tolist()
-                comp_key_col = st.selectbox("Comparison Key Column:", comp_columns)
+                comp_key_col: str = st.selectbox("Comparison Key Column:", comp_columns)
 
                 # Let the user choose which columns from comp_data to keep (besides the key)
                 st.subheader(
@@ -437,7 +515,7 @@ class QualitativeAnalysisApp:
                 selected_comp_cols = st.multiselect(
                     "Columns to import:",
                     possible_comp_cols,
-                    default=possible_comp_cols,  # or `[]` if you want none by default
+                    default=possible_comp_cols,
                 )
 
                 # Convert both sides to string (for consistent merge keys)
@@ -461,8 +539,10 @@ class QualitativeAnalysisApp:
 
                 st.subheader("Select columns to compute Cohen's Kappa:")
                 merged_columns = merged.columns.tolist()
-                llm_judgment_col = st.selectbox("LLM Judgment Column:", merged_columns)
-                external_judgment_col = st.selectbox(
+                llm_judgment_col: str = st.selectbox(
+                    "LLM Judgment Column:", merged_columns
+                )
+                external_judgment_col: str = st.selectbox(
                     "External Judgment Column:", merged_columns
                 )
 
@@ -501,7 +581,7 @@ class QualitativeAnalysisApp:
                 st.error(f"Error loading comparison file: {e}")
 
 
-def main():
+def main() -> None:
     app = QualitativeAnalysisApp()
     app.run()
 

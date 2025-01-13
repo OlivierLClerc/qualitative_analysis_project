@@ -4,6 +4,17 @@ cost_estimation.py
 This module calculates the cost of OpenAI API usage based on token consumption
 for different models. It uses predefined model pricing data to compute the
 total cost of API calls.
+
+Dependencies:
+    - qualitative_analysis.config
+    - typing.Protocol
+
+Classes:
+    - UsageProtocol: Protocol to define the structure of the 'usage' object.
+
+Functions:
+    - openai_api_calculate_cost(usage: UsageProtocol, model: str = "gpt-4o") -> float:
+        Calculates the total API usage cost in USD based on prompt and completion tokens.
 """
 
 from qualitative_analysis.config import MODEL_PRICES

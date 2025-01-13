@@ -27,7 +27,7 @@ from sklearn.metrics import cohen_kappa_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Mapping
 
 
 def compute_cohens_kappa(
@@ -104,11 +104,11 @@ def compute_cohens_kappa(
 
 def compute_all_kappas(
     model_coding: Union[List[int], List[str]],
-    human_annotations: Dict[str, Union[List[int], List[str]]],
+    human_annotations: Mapping[str, Union[List[int], List[str]]],
     labels: Optional[List[Union[int, str]]] = None,
     weights: Optional[str] = None,
     verbose: bool = False,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Computes Cohen's Kappa scores for all combinations of model predictions
     and human annotations, as well as between human annotations themselves.
@@ -181,7 +181,7 @@ def compute_all_kappas(
         )
         results[f"model_vs_{rater}"] = kappa
         if verbose:
-            print(f"Model vs {rater}: {kappa:.2f}")
+            print(f"model vs {rater}: {kappa:.2f}")
 
     # Compare each human rater with every other human rater
     raters = list(human_annotations.keys())

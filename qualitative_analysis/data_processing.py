@@ -11,20 +11,25 @@ Dependencies:
 
 Functions:
     - load_data(file, file_type="csv", delimiter=",", **kwargs): Loads CSV or Excel data into a DataFrame.
+
     - detect_file_encoding(file): Detects a file's encoding using the chardet library.
+
     - clean_and_normalize(series): Cleans and normalizes text data in a pandas Series.
+
     - sanitize_dataframe(df): Removes line breaks from string entries in a DataFrame.
+
     - select_and_rename_columns(data, selected_columns, column_renames): Selects and renames DataFrame columns.
+
     - save_results_to_csv(coding, save_path, fieldnames=None, verbatims=None): Saves coding results to a CSV file.
+    
     - load_results_from_csv(load_path): Loads coding results and verbatims from a CSV file.
-    - extract_global_validity(results_df, ...): Aggregates classification results to determine global validity.
 """
 
 import pandas as pd
 import unicodedata
 import chardet
 import csv
-from typing import Union, IO, Optional, Tuple, List, Dict, Any
+from typing import Union, IO, Optional, Tuple, Sequence, List, Dict, Any
 
 
 def load_data(
@@ -292,7 +297,7 @@ def select_and_rename_columns(
 
 
 def save_results_to_csv(
-    coding: List[Union[Dict[str, Union[str, int, float]], str, int, float]],
+    coding: Sequence[Union[Dict[str, Any], str, int, float]],
     save_path: str,
     fieldnames: Optional[List[str]] = None,
     verbatims: Optional[List[str]] = None,
@@ -306,7 +311,7 @@ def save_results_to_csv(
 
     Parameters:
     ----------
-    coding : List[Union[Dict[str, Union[str, int, float]], str, int, float]]
+    coding : List[Union[Dict[str, Any], str, int, float]]
         A list of coding results. Each element can be:
             - A dictionary where keys represent field names and values are the corresponding data.
             - A single value (string, integer, or float) to be saved under the 'Code' column.
