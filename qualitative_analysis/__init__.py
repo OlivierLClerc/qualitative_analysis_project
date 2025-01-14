@@ -4,7 +4,6 @@ from .data_processing import (
     clean_and_normalize,
     sanitize_dataframe,
     select_and_rename_columns,
-    save_results_to_csv,
     load_results_from_csv,
 )
 from .evaluation import (
@@ -19,7 +18,7 @@ from .model_interaction import (
     get_llm_client,
 )
 from .notebooks_functions import (
-    process_verbatims,
+    process_verbatims_for_multiclass_criteria,
     process_verbatims_for_binary_criteria,
 )
 from .parsing import (
@@ -45,11 +44,10 @@ __all__ = [
     "get_llm_client",
     "build_data_format_description",
     "construct_prompt",
-    "process_verbatims",
+    "process_verbatims_for_multiclass_criteria",
     "process_verbatims_for_binary_criteria",
     "parse_llm_response",
     "openai_api_calculate_cost",
     "extract_code_from_response",
-    "save_results_to_csv",
     "load_results_from_csv",
 ]

@@ -13,6 +13,7 @@ import streamlit as st
 import pandas as pd
 import qualitative_analysis.config as config
 from typing import Any, Dict, List, Optional
+import io
 
 from qualitative_analysis import (
     load_data,
@@ -22,7 +23,6 @@ from qualitative_analysis import (
     construct_prompt,
     get_llm_client,
     parse_llm_response,
-    save_results_to_csv,
     compute_cohens_kappa,
     openai_api_calculate_cost,
 )
@@ -171,7 +171,9 @@ class QualitativeAnalysisApp:
         # Rename columns
         for col in self.selected_columns:
             default_rename = self.column_renames.get(col, col)
-            new_name = st.text_input(f"Rename '{col}' to:", value=default_rename)
+            new_name = st.text_input(
+                f"Rename '{col}' to:", value=default_rename, key=f"rename_{col}"
+            )
             self.column_renames[col] = new_name
         st.session_state["column_renames"] = self.column_renames
 
@@ -181,7 +183,10 @@ class QualitativeAnalysisApp:
             col_key = self.column_renames[col]
             default_desc = self.column_descriptions.get(col_key, "")
             desc = st.text_area(
-                f"Description for '{col_key}':", height=70, value=default_desc
+                f"Description for '{col_key}':",
+                height=70,
+                value=default_desc,
+                key=f"desc_{col_key}",
             )
             self.column_descriptions[col_key] = desc
         st.session_state["column_descriptions"] = self.column_descriptions
@@ -196,6 +201,7 @@ class QualitativeAnalysisApp:
                 "Text columns:",
                 processed.columns.tolist(),
                 default=processed.columns.tolist(),
+                key="text_columns_selection",
             )
 
             for tcol in text_cols:
@@ -227,9 +233,13 @@ class QualitativeAnalysisApp:
         default_examples = st.session_state.get("examples", "")
 
         codebook_val = st.text_area(
-            "Codebook / Instructions for LLM:", value=default_codebook
+            "Codebook / Instructions for LLM:",
+            value=default_codebook,
+            key="codebook_textarea",
         )
-        examples_val = st.text_area("Examples (Optional):", value=default_examples)
+        examples_val = st.text_area(
+            "Examples (Optional):", value=default_examples, key="examples_textarea"
+        )
 
         self.codebook = codebook_val
         self.examples = examples_val
@@ -246,7 +256,9 @@ class QualitativeAnalysisApp:
         st.header("Step 4: Fields to Extract")
         default_fields = ",".join(self.selected_fields) if self.selected_fields else ""
         fields_str = st.text_input(
-            "Comma-separated fields (e.g. 'Evaluation, Comments')", value=default_fields
+            "Comma-separated fields (e.g. 'Evaluation, Comments')",
+            value=default_fields,
+            key="fields_input",
         )
         extracted = [f.strip() for f in fields_str.split(",") if f.strip()]
 
@@ -263,7 +275,7 @@ class QualitativeAnalysisApp:
 
         provider_options = ["OpenAI", "Together"]
         selected_provider_display = st.selectbox(
-            "Select LLM Provider:", provider_options
+            "Select LLM Provider:", provider_options, key="llm_provider_select"
         )
 
         provider_map = {"OpenAI": "azure", "Together": "together"}
@@ -291,6 +303,7 @@ class QualitativeAnalysisApp:
                 if default_model in model_options
                 else 0
             ),
+            key="llm_model_select",
         )
 
         self.selected_model = chosen_model
@@ -334,7 +347,9 @@ class QualitativeAnalysisApp:
         # Allow selecting a subset of rows
         st.subheader("Choose how many rows to analyze")
         process_options = ["All rows", "Subset of rows"]
-        selected_option = st.radio("Process:", process_options, index=0)
+        selected_option = st.radio(
+            "Process:", process_options, index=0, key="process_option_radio"
+        )
 
         num_rows = len(self.processed_data)
         if selected_option == "Subset of rows":
@@ -344,10 +359,14 @@ class QualitativeAnalysisApp:
                 max_value=len(self.processed_data),
                 value=min(10, len(self.processed_data)),
                 step=1,
+                key="num_rows_input",
             )
 
         # Cost Estimation for the First Entry
-        if st.button("Estimate price before analysis (will run on one entry)"):
+        if st.button(
+            "Estimate price before analysis (will run on one entry)",
+            key="estimate_cost_button",
+        ):
             first_entry = self.processed_data.iloc[0]
             entry_text_str = "\n".join(
                 [f"{col}: {first_entry[col]}" for col in self.processed_data.columns]
@@ -387,10 +406,14 @@ class QualitativeAnalysisApp:
                 st.error(f"Error estimating cost: {e}")
 
         # Debug mode checkbox
-        debug_mode = st.checkbox("Show constructed prompt for debugging", value=False)
+        debug_mode = st.checkbox(
+            "Show constructed prompt for debugging",
+            value=False,
+            key="debug_mode_checkbox",
+        )
 
         # Start Full Analysis
-        if st.button("Run Analysis"):
+        if st.button("Run Analysis", key="run_analysis_button"):
             st.info("Processing entries...")
             results: List[Dict[str, Any]] = []
             progress_bar = st.progress(0)
@@ -400,7 +423,7 @@ class QualitativeAnalysisApp:
 
             for i, (idx, row) in enumerate(data_to_process.iterrows()):
                 entry_text_str = "\n".join(
-                    [f"{col}: {row[col]}" for col in data_to_process.columns]
+                    [f"{col}: {row[col]}" for col in self.processed_data.columns]
                 )
 
                 prompt = construct_prompt(
@@ -441,18 +464,25 @@ class QualitativeAnalysisApp:
 
             st.success("Analysis completed!")
             results_df = pd.DataFrame(results)
+            st.session_state["results_df"] = results_df
+
+        # Save Results Section (Moved outside the Run Analysis button block)
+        if self.results:
+            st.header("Save Results")
+            results_df = pd.DataFrame(self.results)
             st.dataframe(results_df)
 
-            st.header("Save Results")
-            filename = st.text_input("Filename", value="results.csv")
-            if st.button("Save to CSV"):
-                save_results_to_csv(
-                    coding=results,
-                    save_path=filename,
-                    fieldnames=list(results_df.columns),
-                    verbatims=None,
-                )
-                st.success(f"Results saved to {filename}")
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                results_df.to_excel(writer, index=False, sheet_name="Results")
+            data_xlsx = output.getvalue()
+            st.download_button(
+                label="Download Excel",
+                data=data_xlsx,
+                file_name="results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_excel_button",
+            )
 
     def compare_with_external_judgments(self) -> None:
         """
@@ -462,7 +492,9 @@ class QualitativeAnalysisApp:
         """
         st.header("Step 7: Compare with External Judgments (Optional)")
         comparison_file = st.file_uploader(
-            "Upload a comparison dataset (CSV or XLSX)", type=["csv", "xlsx"]
+            "Upload a comparison dataset (CSV or XLSX)",
+            type=["csv", "xlsx"],
+            key="comparison_file_uploader",
         )
 
         if comparison_file is not None:
@@ -471,7 +503,9 @@ class QualitativeAnalysisApp:
             # Let the user specify a delimiter for the comparison file if it's CSV
             if file_type == "csv":
                 comp_delimiter = st.text_input(
-                    "Delimiter for comparison CSV:", value=";"
+                    "Delimiter for comparison CSV:",
+                    value=";",
+                    key="comp_delimiter_input",
                 )
             else:
                 comp_delimiter = None  # not used for XLSX
@@ -499,11 +533,15 @@ class QualitativeAnalysisApp:
                 # Let user pick the key columns from each DataFrame
                 st.subheader("Select key column to merge on (LLM Results)")
                 llm_columns = results_df.columns.tolist()
-                llm_key_col: str = st.selectbox("LLM Key Column:", llm_columns)
+                llm_key_col: str = st.selectbox(
+                    "LLM Key Column:", llm_columns, key="llm_key_column_select"
+                )
 
                 st.subheader("Select key column to merge on (Comparison Dataset)")
                 comp_columns = comp_data.columns.tolist()
-                comp_key_col: str = st.selectbox("Comparison Key Column:", comp_columns)
+                comp_key_col: str = st.selectbox(
+                    "Comparison Key Column:", comp_columns, key="comp_key_column_select"
+                )
 
                 # Let the user choose which columns from comp_data to keep (besides the key)
                 st.subheader(
@@ -516,66 +554,69 @@ class QualitativeAnalysisApp:
                     "Columns to import:",
                     possible_comp_cols,
                     default=possible_comp_cols,
+                    key="selected_comp_cols_multiselect",
                 )
 
-                # Convert both sides to string (for consistent merge keys)
-                results_df[llm_key_col] = results_df[llm_key_col].astype(str)
-                comp_data[comp_key_col] = comp_data[comp_key_col].astype(str)
+                if selected_comp_cols:
+                    # Convert both sides to string (for consistent merge keys)
+                    results_df[llm_key_col] = results_df[llm_key_col].astype(str)
+                    comp_data[comp_key_col] = comp_data[comp_key_col].astype(str)
 
-                # Subset the comparison data to the key + selected columns
-                comp_data_subset = comp_data[[comp_key_col] + selected_comp_cols]
+                    # Subset the comparison data to the key + selected columns
+                    comp_data_subset = comp_data[[comp_key_col] + selected_comp_cols]
 
-                # Perform the merge
-                merged = pd.merge(
-                    results_df,
-                    comp_data_subset,
-                    left_on=llm_key_col,
-                    right_on=comp_key_col,
-                    how="inner",
-                )
+                    # Perform the merge
+                    merged = pd.merge(
+                        results_df,
+                        comp_data_subset,
+                        left_on=llm_key_col,
+                        right_on=comp_key_col,
+                        how="inner",
+                    )
 
-                st.write("Merged Dataframe:")
-                st.dataframe(merged.head())
+                    st.write("Merged Dataframe:")
+                    st.dataframe(merged.head())
 
-                st.subheader("Select columns to compute Cohen's Kappa:")
-                merged_columns = merged.columns.tolist()
-                llm_judgment_col: str = st.selectbox(
-                    "LLM Judgment Column:", merged_columns
-                )
-                external_judgment_col: str = st.selectbox(
-                    "External Judgment Column:", merged_columns
-                )
+                    st.subheader("Select columns to compute Cohen's Kappa:")
+                    merged_columns = merged.columns.tolist()
+                    llm_judgment_col: str = st.selectbox(
+                        "LLM Judgment Column:",
+                        merged_columns,
+                        key="llm_judgment_col_select",
+                    )
+                    external_judgment_col: str = st.selectbox(
+                        "External Judgment Column:",
+                        merged_columns,
+                        key="external_judgment_col_select",
+                    )
 
-                if st.button("Compute Cohen's Kappa"):
-                    if (
-                        llm_judgment_col not in merged.columns
-                        or external_judgment_col not in merged.columns
-                    ):
-                        st.error("Selected columns not found in merged data.")
-                        return
+                    if st.button("Compute Cohen's Kappa", key="compute_kappa_button"):
+                        if (
+                            llm_judgment_col not in merged.columns
+                            or external_judgment_col not in merged.columns
+                        ):
+                            st.error("Selected columns not found in merged data.")
+                            return
 
-                    # Drop NaNs first
-                    judgments_1 = merged[llm_judgment_col].dropna()
-                    judgments_2 = merged[external_judgment_col].dropna()
+                        # Drop NaNs first
+                        judgments_1 = merged[llm_judgment_col].dropna()
+                        judgments_2 = merged[external_judgment_col].dropna()
 
-                    # Convert both to int if possible
-                    try:
-                        judgments_1 = judgments_1.astype(int)
-                        judgments_2 = judgments_2.astype(int)
-                    except ValueError:
-                        st.error(
-                            f"Could not convert {llm_judgment_col} or "
-                            f"{external_judgment_col} to int. "
-                            f"Ensure they contain valid integers."
-                        )
-                        return
+                        # Align the indices after dropping NaNs
+                        merged_aligned = pd.concat(
+                            [judgments_1, judgments_2], axis=1
+                        ).dropna()
+                        judgments_1 = merged_aligned[llm_judgment_col].astype(int)
+                        judgments_2 = merged_aligned[external_judgment_col].astype(int)
 
-                    if len(judgments_1) == 0 or len(judgments_2) == 0:
-                        st.error("No valid data to compare after converting to int.")
-                        return
+                        if len(judgments_1) == 0 or len(judgments_2) == 0:
+                            st.error(
+                                "No valid data to compare after converting to int."
+                            )
+                            return
 
-                    kappa = compute_cohens_kappa(judgments_1, judgments_2)
-                    st.write(f"Cohen's Kappa: {kappa:.4f}")
+                        kappa = compute_cohens_kappa(judgments_1, judgments_2)
+                        st.write(f"Cohen's Kappa: {kappa:.4f}")
 
             except Exception as e:
                 st.error(f"Error loading comparison file: {e}")

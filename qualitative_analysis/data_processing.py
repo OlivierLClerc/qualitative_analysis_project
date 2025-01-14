@@ -19,8 +19,6 @@ Functions:
     - sanitize_dataframe(df): Removes line breaks from string entries in a DataFrame.
 
     - select_and_rename_columns(data, selected_columns, column_renames): Selects and renames DataFrame columns.
-
-    - save_results_to_csv(coding, save_path, fieldnames=None, verbatims=None): Saves coding results to a CSV file.
     
     - load_results_from_csv(load_path): Loads coding results and verbatims from a CSV file.
 """
@@ -29,7 +27,7 @@ import pandas as pd
 import unicodedata
 import chardet
 import csv
-from typing import Union, IO, Optional, Tuple, Sequence, List, Dict, Any
+from typing import Union, IO, Tuple, List, Dict, Any
 
 
 def load_data(
@@ -294,71 +292,6 @@ def select_and_rename_columns(
         If any of the `selected_columns` are not present in the DataFrame.
     """
     return data[selected_columns].rename(columns=column_renames)
-
-
-def save_results_to_csv(
-    coding: Sequence[Union[Dict[str, Any], str, int, float]],
-    save_path: str,
-    fieldnames: Optional[List[str]] = None,
-    verbatims: Optional[List[str]] = None,
-) -> None:
-    """
-    Saves coding results and optional verbatims to a CSV file.
-
-    This function writes coding results to a CSV file. If `verbatims` are provided,
-    they are included in the output under the 'Verbatim' column. If `fieldnames`
-    are not specified, they are inferred from the keys of the first coding entry.
-
-    Parameters:
-    ----------
-    coding : List[Union[Dict[str, Any], str, int, float]]
-        A list of coding results. Each element can be:
-            - A dictionary where keys represent field names and values are the corresponding data.
-            - A single value (string, integer, or float) to be saved under the 'Code' column.
-
-    save_path : str
-        The file path where the CSV will be saved.
-
-    fieldnames : Optional[List[str]], optional
-        A list of column headers for the CSV. If not provided, field names are inferred from the first coding entry.
-
-    verbatims : Optional[List[str]], optional
-        A list of verbatim texts associated with each coding result.
-        If provided, they are added to the 'Verbatim' column.
-
-    Returns:
-    -------
-    None
-
-    Raises:
-    ------
-    ValueError
-        If the lengths of `coding` and `verbatims` do not match.
-    """
-    if verbatims and len(coding) != len(verbatims):
-        raise ValueError("The length of 'coding' and 'verbatims' must be the same.")
-
-    rows = []
-    for i, code in enumerate(coding):
-        verbatim = verbatims[i] if verbatims else None
-        if isinstance(code, dict):
-            row = {"Verbatim": verbatim, **code}
-        else:
-            row = {"Verbatim": verbatim, "Code": code}
-        rows.append(row)
-
-    # Determine fieldnames if not provided
-    if not fieldnames:
-        fieldnames = list(rows[0].keys())
-    else:
-        fieldnames = ["Verbatim"] + fieldnames
-
-    with open(save_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-    print(f"Results saved to: {save_path}")
 
 
 def load_results_from_csv(

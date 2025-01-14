@@ -209,7 +209,7 @@ def compute_all_kappas(
 
 def plot_confusion_matrices(
     model_coding: List[Union[int, str]],
-    human_annotations: Dict[str, List[Union[int, str]]],
+    human_annotations: Dict[str, List[int]],
     labels: List[Union[int, str]],
 ) -> None:
     """
@@ -225,7 +225,7 @@ def plot_confusion_matrices(
     model_coding : List[int] or List[str]
         List of model predictions for each sample.
 
-    human_annotations : Dict[str, List[int] or List[str]]
+    human_annotations : Dict[str, List[int]]
         Dictionary where keys are rater names and values are lists of annotations.
 
     labels : List[int] or List[str]

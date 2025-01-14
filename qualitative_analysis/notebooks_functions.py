@@ -11,10 +11,10 @@ Dependencies:
     - qualitative_analysis.cost_estimation (for calculating API costs)
 
 Functions:
-    - generate_answer(llm_client, model_name, base_prompt, multiclass_query, reasoning_query, ...):  
+    - generate_multiclass_classification_answer(llm_client, model_name, base_prompt, multiclass_query, reasoning_query, ...):  
       Generates multiclass classification results with optional reasoning steps.
 
-    - process_verbatims(verbatims_subset, codebooks, llm_client, model_name, prompt_template, ...):  
+    - process_verbatims_for_multiclass_criteria(verbatims_subset, codebooks, llm_client, model_name, prompt_template, ...):  
       Processes a set of verbatims (text samples) for multiclass classification and tracks API usage costs.
 
     - generate_binary_classification_answer(llm_client, model_name, final_prompt, reasoning_query, binary_query, ...):  
@@ -24,13 +24,16 @@ Functions:
       Processes verbatims for binary classification across multiple themes and calculates token usage costs.
 """
 
-from qualitative_analysis.parsing import extract_code_from_response
+from qualitative_analysis.parsing import (
+    extract_code_from_response,
+    parse_key_value_lines,
+)
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
 from qualitative_analysis.cost_estimation import UsageProtocol
-from typing import List, Dict, Tuple
+from typing import List, Dict, Any, Tuple
 
 
-def generate_answer(
+def generate_multiclass_classification_answer(
     llm_client,
     model_name: str,
     base_prompt: str,
@@ -138,7 +141,7 @@ def generate_answer(
         return response_text, usage
 
 
-def process_verbatims(
+def process_verbatims_for_multiclass_criteria(
     verbatims_subset: List[str],
     codebooks: Dict[str, str],
     llm_client,
@@ -149,7 +152,7 @@ def process_verbatims(
     valid_scores: List[int],
     reasoning: bool = False,
     verbose: bool = False,
-) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Processes and classifies a list of verbatims using the provided LLM.
 
@@ -192,24 +195,24 @@ def process_verbatims(
 
     Returns:
     -------
-    Tuple[List[Dict[str, object]], List[Dict[str, object]]]
+    Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]
         - A list of classification results.
         - A list of usage and cost per verbatim.
     """
-    results = []
-    verbatim_costs = []
+    results: List[Dict[str, Any]] = []
+    verbatim_costs: List[Dict[str, Any]] = []
     total_tokens_used = 0
     total_cost = 0.0
 
     for idx, verbatim_text in enumerate(verbatims_subset):
-        print(f"\n=== Processing Verbatim {idx + 1}/{len(verbatims_subset)} ===")
+        if verbose:
+            print(f"\n=== Processing Verbatim {idx + 1}/{len(verbatims_subset)} ===")
 
         verbatim_tokens_used = 0
         verbatim_cost = 0.0
 
-        # For each theme in the codebook dictionary
+        # For each theme in the codebook
         for theme_name, codebook in codebooks.items():
-
             if verbose:
                 print(f"\n--- Evaluating Theme: {theme_name} ---")
 
@@ -219,8 +222,8 @@ def process_verbatims(
             )
 
             try:
-                # Generate the response
-                response_content, usage = generate_answer(
+                # This calls your LLM classification function
+                response_content, usage = generate_multiclass_classification_answer(
                     llm_client=llm_client,
                     model_name=model_name,
                     base_prompt=final_prompt,
@@ -231,36 +234,51 @@ def process_verbatims(
                     verbose=verbose,
                 )
 
-                # Track usage/cost if usage is returned
-                if usage:
+                # If usage was returned, accumulate cost
+                if usage is not None:
                     tokens_used = usage.total_tokens
                     cost = openai_api_calculate_cost(usage, model=model_name)
+
                     total_tokens_used += tokens_used
                     total_cost += cost
 
                     verbatim_tokens_used += tokens_used
                     verbatim_cost += cost
 
-                # Parse the classification score
+                # Extract a numeric label
                 label = extract_code_from_response(response_content)
-                if label in valid_scores:
-                    results.append(
-                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": label}
-                    )
-                else:
-                    results.append(
-                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
-                    )
+                if label not in valid_scores:
+                    label = None
+
+                # Parse the verbatim text into sub-fields (instead of storing it as "Verbatim")
+                parsed_fields = parse_key_value_lines(verbatim_text)
+                # e.g. {"Id": "...", "Texte": "...", "Question": "...", ...}
+
+                # Build our final result row merging the parsed fields with the classification
+                result_row: Dict[str, Any] = {
+                    **parsed_fields,
+                    "Theme": theme_name,
+                    "Label": label,
+                }
+                results.append(result_row)
 
             except Exception as e:
-                print(
-                    f"Error processing Verbatim {idx + 1} / Theme '{theme_name}': {e}"
-                )
+                if verbose:
+                    print(
+                        f"Error processing Verbatim {idx + 1} / Theme '{theme_name}': {e}"
+                    )
+
+                # Even on error, parse the fields so we keep some info
+                parsed_fields = parse_key_value_lines(verbatim_text)
                 results.append(
-                    {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
+                    {
+                        **parsed_fields,
+                        "Theme": theme_name,
+                        "Label": None,
+                    }
                 )
 
-        # Store usage/cost for this verbatim
+        # Record usage/cost info for this verbatim
         verbatim_costs.append(
             {
                 "Verbatim": verbatim_text,
@@ -269,9 +287,11 @@ def process_verbatims(
             }
         )
 
-    print("\n=== Processing Complete ===")
-    print(f"Total Tokens Used: {total_tokens_used}")
-    print(f"Total Cost for Processing: ${total_cost:.4f}")
+    # Final logs
+    if verbose or True:
+        print("\n=== Processing Complete ===")
+        print(f"Total Tokens Used: {total_tokens_used}")
+        print(f"Total Cost for Processing: ${total_cost:.4f}")
 
     return results, verbatim_costs
 
@@ -377,7 +397,7 @@ def process_verbatims_for_binary_criteria(
     binary_query: str,
     reasoning: bool = False,
     verbose: bool = False,
-) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Processes verbatims and classifies them into binary categories (`0` or `1`) using an LLM.
 
@@ -416,7 +436,7 @@ def process_verbatims_for_binary_criteria(
 
     Returns:
     -------
-    Tuple[List[Dict[str, object]], List[Dict[str, object]]]
+    Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]
         - A list of classification results (`'Verbatim'`, `'Theme'`, `'Label'`).
         - A list of token usage and cost per verbatim.
     """
@@ -458,7 +478,6 @@ def process_verbatims_for_binary_criteria(
                 # Track usage/cost if usage is returned
                 if usage:
                     tokens_used = usage.total_tokens
-                    # use your cost function
                     cost = openai_api_calculate_cost(usage, model=model_name)
                     total_tokens_used += tokens_used
                     total_cost += cost
@@ -468,19 +487,33 @@ def process_verbatims_for_binary_criteria(
 
                 # parse the numeric classification (0 or 1)
                 label = extract_code_from_response(response_text)
-                if label in [0, 1]:
-                    results.append(
-                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": label}
-                    )
-                else:
-                    results.append(
-                        {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
-                    )
+                if label not in [0, 1]:
+                    label = None
+
+                # ### CHANGES: Parse the verbatim_text into sub-fields
+                parsed_fields = parse_key_value_lines(verbatim_text)
+                # e.g. parsed_fields might be {"Id": "197", "Texte": "...", "Question": "...", ...}
+
+                # Combine parsed fields with "Theme" and the numeric label
+                # If you still want the raw "Verbatim" as well, you can keep it, but let's omit it for clarity
+                result_row = {
+                    **parsed_fields,
+                    "Theme": theme_name,
+                    "Label": label,
+                }
+
+                results.append(result_row)
 
             except Exception as e:
                 print(f"Error processing Verbatim {idx+1} / Theme '{theme_name}': {e}")
+                # If there's an error, we still parse the verbatim text
+                parsed_fields = parse_key_value_lines(verbatim_text)
                 results.append(
-                    {"Verbatim": verbatim_text, "Theme": theme_name, "Label": None}
+                    {
+                        **parsed_fields,
+                        "Theme": theme_name,
+                        "Label": None,
+                    }
                 )
 
         # Store usage/cost for this verbatim

@@ -2,7 +2,7 @@
 parsing.py
 
 This module provides functions for parsing and extracting structured information from language model responses
-and classification results. It is designed to handle text outputs, particularly in JSON format, and extract 
+and classification results. It is designed to handle text outputs, JSON format, and extract 
 key data for further analysis.
 
 Dependencies:
@@ -21,12 +21,15 @@ Functions:
                               verbatim_column="Verbatim", global_validity_column="Global_Validity", 
                               verbatim_output_column="Verbatim"): 
         Aggregates binary classification results to determine the overall validity of grouped entries.
+
+    - parse_key_value_lines(text: str) -> Dict[str, str]:
+        Parses 'Key: Value' formatted lines from a text into a dictionary, supporting multi-line values.
 """
 
 import json
 import re
 import pandas as pd
-from typing import Optional
+from typing import Optional, Dict
 
 
 def parse_llm_response(evaluation_text: str, selected_fields: list) -> dict:
@@ -267,3 +270,104 @@ def extract_global_validity(
     )
 
     return global_validity
+
+
+def parse_key_value_lines(text: str) -> Dict[str, str]:
+    """
+    Parses 'Key: Value' formatted lines from a text into a dictionary.
+
+    Allows multi-line values if they follow the same key.
+
+    Parameters:
+    ----------
+    text : str
+        The text containing 'Key: Value' lines to parse.
+
+    Returns:
+    -------
+    Dict[str, str]
+        A dictionary with keys and their corresponding multi-line or single-line values.
+
+    Examples:
+    --------
+    Parsing a simple multi-line verbatim:
+
+    >>> text = '''Id: 197
+    ... Texte: Les enormes yeux des insectes font quasiment le tour de leurs tetes.
+    ... Ils voient donc en meme temps vers lavant, vers larriere, a droite, a gauche, vers le haut et vers le bas.
+    ... Encore mieux quun casque de vision en 3D!
+    ... Question: Comment les point sont ensuite assembles'''
+    >>> parse_key_value_lines(text)
+    {'Id': '197', 'Texte': 'Les enormes yeux des insectes font quasiment le tour de leurs tetes.\\nIls voient donc en meme temps vers lavant, vers larriere, a droite, a gauche, vers le haut et vers le bas.\\nEncore mieux quun casque de vision en 3D!', 'Question': 'Comment les point sont ensuite assembles'}
+
+    Handling sections without a colon:
+
+    >>> text = '''Id: 198
+    ... Texte: Sample text without question
+    ... Another line without key'''
+    >>> parse_key_value_lines(text)
+    {'Id': '198', 'Texte': 'Sample text without question\\nAnother line without key'}
+
+    Handling empty lines and multiple keys:
+
+    >>> text = '''Id: 199
+    ...
+    ... Texte: Sample text for multiple keys
+    ... Question: What is the purpose?
+    ...
+    ... Score: 5'''
+    >>> parse_key_value_lines(text)
+    {'Id': '199', 'Texte': 'Sample text for multiple keys', 'Question': 'What is the purpose?', 'Score': '5'}
+
+    When no key-value pairs are present:
+
+    >>> text = '''Just some random text without keys.'''
+    >>> parse_key_value_lines(text)
+    {'Section_1': 'Just some random text without keys.'}
+    """
+    lines = text.splitlines()
+    result: Dict[str, str] = {}
+
+    # Regular expression to match lines starting with 'Key: Value'
+    key_pattern = re.compile(r"^(\S+)\s*:\s*(.*)$")
+    # Explanation:
+    #   ^(\S+)\s*:\s* matches "Id:  " or "Texte: "
+    #   (.*)$ captures the rest of the line as the initial value
+
+    current_key = None
+    current_value_lines = []
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            # Empty line
+            if current_key:
+                current_value_lines.append("")  # Preserve empty lines if desired
+            continue
+
+        match = key_pattern.match(line)
+        if match:
+            # Found a new 'Key: value' line
+            # 1) Store the previous key-value if it exists
+            if current_key is not None:
+                result[current_key] = "\n".join(current_value_lines).strip()
+
+            # 2) Start a new key-value
+            current_key = match.group(1)
+            initial_value = match.group(2)
+            current_value_lines = [initial_value]
+        else:
+            # Continuation of the current key-value (multi-line value)
+            if current_key is not None:
+                current_value_lines.append(line)
+            else:
+                # No current key -> assign to a generic section
+                generic_key = f"Section_{len(result) + 1}"
+                current_key = generic_key
+                current_value_lines = [line]
+
+    # End of loop: store the last key-value pair if any
+    if current_key is not None:
+        result[current_key] = "\n".join(current_value_lines).strip()
+
+    return result
