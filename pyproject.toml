@@ -4,13 +4,33 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+# Include ALL relevant directories and files
+[tool.setuptools.packages.find]
+include = [
+    "qualitative_analysis*",
+    "notebooks*",
+    "codebook*",
+    "data*"
+]
+
+# Include non-code files (e.g., CSVs, JSONs, notebooks)
+[tool.setuptools.package-data]
+qualitative_analysis = ["*.json", "*.csv", "*.txt"]
+notebooks = ["*.ipynb"]
+codebook = ["*"]
+data = ["*"]
+
+# Include app.py as a console script
+[project.scripts]
+qualitative-app = "app:main"
+
 [project]
 name = "qualitative_analysis"
 version = "0.1.0"
 description = "A toolkit for qualitative data analysis using language models."
 readme = "README.md"
 requires-python = ">=3.8"
-license = "MIT"
+license = { text = "UNLICENSED" }
 
 authors = [
   { name="Olivier Clerc", email="oclerc38@gmail.com" },

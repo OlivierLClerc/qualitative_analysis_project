@@ -9,14 +9,26 @@ The goal is to provide a tool for the automatic annotation of qualitative data t
 ## Installation
 
 1. Clone the repository.
-2. Install the required packages:
 
-    ```bash
-    pip install -r requirements.txt
-    ```
-3. Put your API credential.
+```bash
+git clone https://github.com/your-username/qualitative_analysis_project.git
+cd qualitative_analysis_project
+```
+2. Create a Virtual Environment
 
-Copy or rename `.env.example` to `.env` (if available). Populate it with your LLM credentials (e.g., Azure or Together keys, endpoints).
+```bash
+conda create -n qualitative_analysis python=3.10
+conda activate qualitative_analysis
+```
+
+3. Install the required packages:
+
+```bash
+pip install -r requirements.txt
+```
+4. Put your API credential.
+
+Copy or rename `.env.example` to `.env`. Populate it with your LLM credentials (e.g., Azure or Together keys, endpoints).
 
 Example:
 
@@ -58,7 +70,7 @@ The notebooks contain the classification workflows for each criterion:
 ## Project Structure
 
 ```bash
-QUALITATIVE_ANALYSIS_P
+QUALITATIVE_ANALYSIS_PROJECT
 ├── codebook
 │   ├── binary_codebook.txt
 │   └── multiclass_codebook.txt

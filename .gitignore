@@ -92,6 +92,9 @@ ENV/
 # mypy ini
 mypy.ini
 
+# toml
+pyproject.toml
+
 # PyCharm
 .idea/
 
