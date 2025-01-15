@@ -77,7 +77,7 @@ class LLMClient(ABC):
 
 class OpenAILLMClient(LLMClient):
     """
-    Client for interacting with standard OpenAI language models (non-Azure).
+    Client for interacting with OpenAI language models (non-Azure).
 
     This class manages communication with the standard OpenAI API, enabling
     prompt-based interactions with models like "gpt-3.5-turbo" or "gpt-4".
@@ -389,7 +389,7 @@ def get_llm_client(provider: str, config: dict) -> LLMClient:
             - 'endpoint':      Azure OpenAI endpoint URL.
             - 'api_version':   API version (e.g., '2023-05-15').
 
-        For **standard OpenAI**:
+        For **OpenAI**:
             - 'api_key':       OpenAI API key (e.g., from OPENAI_API_KEY environment variable).
 
         For **Together AI**:
