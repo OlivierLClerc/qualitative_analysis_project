@@ -70,7 +70,7 @@ The notebooks contain the classification workflows for each criterion:
 
 Run the notebook in the cloud without installing anything:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-username/qualitative_analysis_project/blob/main/notebooks/notebook_sequential_binary_collab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/main/notebooks/notebook_sequential_binary_collab.ipynb)
 
 ## Project Structure
 
