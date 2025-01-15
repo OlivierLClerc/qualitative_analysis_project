@@ -1,12 +1,29 @@
 # QUALITATIVE_ANALYSIS_PROJECT
 
-A Python-based toolkit for qualitative data analysis using language models.
-The goal is to provide a tool for the automatic annotation of qualitative data through:
+A **Python-based toolkit** for qualitative data analysis using **Large Language Models (LLMs)**.
 
-- A no-code mode using the interactive web interface (Streamlit app).
-- A low-code mode using Jupyter notebooks for more customizable workflows.
+This toolkit provides two modes for automatic annotation of qualitative data:
 
-## Installation
+1. **No-Code Mode** → Use the interactive **Streamlit** web app.  
+2. **Low-Code Mode** → Use the provided **Jupyter/Colab notebooks** for more customizable workflows.
+
+---
+
+## 🚀 Running without installation
+
+### **Use the streamlit server**
+
+Click the link below to run the web app. 
+
+### **Run in Google Colab**
+
+Click the badge below to run the notebook directly in **Google Colab**:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/notebook_sequential_binary_colab.ipynb)
+
+## **Run Locally (Full Control)**
+
+If you prefer to run the analysis directly on your machine, follow those installation steps.
 
 1. Clone the repository.
 
@@ -65,12 +82,6 @@ The notebooks contain the classification workflows for each criterion:
 - [Binary criterion](notebooks/notebook_binary.ipynb).
 - [Multiclass criterion](notebooks/notebook_multiclass.ipynb).
 - [Sequential binary criterion](notebooks/notebook_sequential_binary.ipynb).
-
-### 📓 Run in Google Colab
-
-Run the notebook in the cloud without installing anything:
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/notebook_sequential_binary_collab.ipynb)
 
 ## Project Structure
 
