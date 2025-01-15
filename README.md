@@ -66,6 +66,11 @@ The notebooks contain the classification workflows for each criterion:
 - [Multiclass criterion](notebooks/notebook_multiclass.ipynb).
 - [Sequential binary criterion](notebooks/notebook_sequential_binary.ipynb).
 
+### 📓 Run in Google Colab
+
+Run the notebook in the cloud without installing anything:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-username/qualitative_analysis_project/blob/main/notebooks/notebook_sequential_binary_collab.ipynb)
 
 ## Project Structure
 
@@ -141,7 +146,6 @@ Contains human-readable text files defining classification rules or codebooks (b
 
 ## 📜 License
 
-(Include your chosen license here, e.g., MIT, Apache 2.0, etc.)
 
 ## 📚 Acknowledgments / References
 

@@ -15,16 +15,21 @@ from typing import Dict, Optional
 load_dotenv()
 
 # Configuration dictionary for different model providers.
-# 'azure' contains settings for accessing Azure's OpenAI services.
+# 'azure' contains settings for accessing Azure's OpenAI services
 MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
     "azure": {
-        "api_key": os.getenv(
-            "AZURE_API_KEY"
-        ),  # Azure API Key from environment variables.
-        "endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),  # Azure OpenAI endpoint URL.
-        "api_version": os.getenv("AZURE_API_VERSION"),  # API version for Azure OpenAI.
-    }
+        "api_key": os.getenv("AZURE_API_KEY"),
+        "endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),
+        "api_version": os.getenv("AZURE_API_VERSION"),
+    },
+    "openai": {
+        "api_key": os.getenv("OPENAI_API_KEY"),
+        # For standard OpenAI usage, you typically just need the API key,
+        # no special endpoint or api_version.
+        # But you could add more keys if needed (org ID, etc.).
+    },
 }
+
 
 # Pricing information for different models.
 # The prices are in dollars per token, where 'prompt' is the cost of input tokens
@@ -38,7 +43,9 @@ MODEL_PRICES: Dict[str, Dict[str, float]] = {
 }
 
 # NOTE:
-# Ensure the .env file is properly set up in your project directory with the following keys:
-#   AZURE_API_KEY        - Your Azure API key
-#   AZURE_OPENAI_ENDPOINT - Azure OpenAI endpoint URL
-#   AZURE_API_VERSION    - Azure API version
+# Ensure the .env file is properly set up with your keys:
+# .env file might contain:
+#   AZURE_API_KEY=...
+#   AZURE_OPENAI_ENDPOINT=...
+#   AZURE_API_VERSION=...
+#   OPENAI_API_KEY=...

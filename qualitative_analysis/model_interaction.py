@@ -1,23 +1,29 @@
 """
 model_interaction.py
 
-This module provides a unified interface for interacting with different large language model (LLM) providers, 
-such as Azure OpenAI and Together AI. It abstracts API interactions to simplify sending prompts and 
-retrieving responses across multiple providers.
+This module provides a unified interface for interacting with different large language model (LLM) providers,
+including:
+
+    - OpenAI
+    - Azure OpenAI
+    - Together AI
+
+It abstracts API interactions to simplify sending prompts and retrieving responses across multiple providers.
 
 Dependencies:
-    - openai: For interacting with Azure OpenAI models.
+    - openai: For interacting with Azure OpenAI or standard OpenAI models.
     - together: For interacting with Together AI models.
     - abc: For defining the abstract base class.
 
 Classes:
     - LLMClient: Abstract base class defining the interface for LLM clients.
-    - OpenAILLMClient: Client for interacting with Azure OpenAI language models.
+    - OpenAILLMClient: Client for interacting with standard OpenAI language models.
+    - AzureOpenAILLMClient: Client for interacting with Azure OpenAI language models.
     - TogetherLLMClient: Client for interacting with Together AI language models.
 
 Functions:
     - get_llm_client(provider, config): Factory function to instantiate the appropriate LLM client 
-      based on the provider.
+      based on the specified provider string.
 """
 
 from abc import ABC, abstractmethod
@@ -71,45 +77,116 @@ class LLMClient(ABC):
 
 class OpenAILLMClient(LLMClient):
     """
+    Client for interacting with standard OpenAI language models (non-Azure).
+
+    This class manages communication with the standard OpenAI API, enabling
+    prompt-based interactions with models like "gpt-3.5-turbo" or "gpt-4".
+    It handles authentication via an OpenAI API key (api_key).
+
+    Attributes
+    ----------
+    api_key : str
+        The OpenAI API key used for authentication.
+
+    Methods
+    -------
+    get_response(prompt, model, **kwargs) -> tuple[str, object]
+        Sends a prompt to the specified OpenAI language model and returns the
+        response text plus usage metadata.
+    """
+
+    def __init__(self, api_key: str):
+        """
+        Initializes the OpenAI LLM client.
+
+        Parameters
+        ----------
+        api_key : str
+            The OpenAI API key to use (from OPENAI_API_KEY).
+        """
+        openai.api_type = "openai"
+        openai.api_key = api_key
+        # You may optionally set `openai.organization` if needed:
+        # openai.organization = os.getenv("OPENAI_ORGANIZATION")
+
+    def get_response(self, prompt: str, model: str, **kwargs) -> tuple[str, object]:
+        """
+        Sends a prompt to the standard OpenAI model and retrieves the response.
+
+        Parameters
+        ----------
+        prompt : str
+            The user prompt to send to the language model.
+
+        model : str
+            The OpenAI model name (e.g., "gpt-3.5-turbo", "gpt-4", etc.).
+
+        **kwargs : dict, optional
+            Additional arguments such as:
+            - temperature (float): Controls randomness (default is 0.0).
+            - max_tokens (int): Max tokens in the response (default 500).
+            - verbose (bool): If True, prints debug info.
+
+        Returns
+        -------
+        tuple[str, object]
+            A tuple containing:
+                - The generated response text (str).
+                - The usage object detailing token usage (object), if any.
+
+        Raises
+        ------
+        openai.error.OpenAIError
+            If the API request fails.
+        """
+        temperature = kwargs.get("temperature", 0.0)
+        max_tokens = kwargs.get("max_tokens", 500)
+        verbose = kwargs.get("verbose", False)
+
+        if verbose:
+            print(f"Prompt:\n{prompt}\n")
+
+        # Standard openai call:
+        response = openai.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        if verbose:
+            print("\n=== LLM Response ===")
+            print(f"{response.choices[0].message.content}\n")
+
+        content = response.choices[0].message.content
+        usage_obj = response.usage  # includes tokens used
+        return (content.strip() if content else ""), usage_obj
+
+
+class AzureOpenAILLMClient(LLMClient):
+    """
     Client for interacting with Azure OpenAI language models.
 
-    This class manages communication with the Azure OpenAI API, enabling prompt-based interactions
-    with models like **GPT-3** and **GPT-4**. It handles authentication, configuration, and
-    response retrieval.
+    This class manages communication with the Azure OpenAI API, enabling prompt-based
+    interactions with models like GPT-3/GPT-4 deployed on Azure. It handles authentication,
+    configuration (endpoint, api_version), and response retrieval.
 
-    Attributes:
+    Attributes
     ----------
-    - api_key (str):
-        The API key for authenticating with the Azure OpenAI service.
-    - endpoint (str):
+    api_key : str
+        The Azure API key for authenticating with the Azure OpenAI service.
+    endpoint : str
         The base URL endpoint for the Azure OpenAI service.
-    - api_version (str):
-        The API version to use when making requests (e.g., '2023-05-15').
+    api_version : str
+        The API version to use when making requests, e.g. '2023-05-15'.
 
     Methods:
     -------
     - get_response(prompt, model, **kwargs):
         Sends a prompt to the Azure OpenAI language model and retrieves the generated response.
-
-    Example (Mocked):
-    -----------------
-    This example demonstrates how to use the client with a mocked API call for testing purposes.
-
-    >>> from unittest.mock import patch
-    >>> client = OpenAILLMClient(
-    ...     api_key="fake_api_key",
-    ...     endpoint="https://fake-endpoint.openai.azure.com/",
-    ...     api_version="2023-05-15"
-    ... )
-    >>> with patch.object(client, 'get_response', return_value=("Mocked response", None)):
-    ...     response, _ = client.get_response(
-    ...         prompt="Tell me a joke!",
-    ...         model="gpt-4",
-    ...         temperature=0.5,
-    ...         max_tokens=50
-    ...     )
-    >>> print(response)
-    Mocked response
     """
 
     def __init__(self, api_key: str, endpoint: str, api_version: str):
@@ -124,14 +201,6 @@ class OpenAILLMClient(LLMClient):
             The endpoint URL for the Azure OpenAI service.
         - api_version (str):
             The API version to use when making API requests.
-
-        Example:
-        -------
-        >>> client = OpenAILLMClient(
-        ...     api_key="your_api_key",
-        ...     endpoint="https://your-endpoint.openai.azure.com/",
-        ...     api_version="2023-05-15"
-        ... )
         """
         openai.api_type = "azure"
         openai.api_key = api_key
@@ -165,26 +234,6 @@ class OpenAILLMClient(LLMClient):
         ------
         - openai.error.OpenAIError:
             If the API request fails.
-
-        Example (Mocked):
-        -----------------
-        This example uses a mocked response to safely test the function.
-
-        >>> from unittest.mock import patch
-        >>> client = OpenAILLMClient(
-        ...     api_key="fake_api_key",
-        ...     endpoint="https://fake-endpoint.openai.azure.com/",
-        ...     api_version="2023-05-15"
-        ... )
-        >>> with patch.object(client, 'get_response', return_value=("Mocked response", None)):
-        ...     response, _ = client.get_response(
-        ...         prompt="Tell me a joke!",
-        ...         model="gpt-4",
-        ...         temperature=0.5,
-        ...         max_tokens=50
-        ...     )
-        >>> print(response)
-        Mocked response
         """
         # Extract parameters or set defaults
         temperature = kwargs.get("temperature", 0)
@@ -257,22 +306,6 @@ class TogetherLLMClient(LLMClient):
     -------
     - get_response(prompt, model, **kwargs):
         Sends a prompt to the Together AI language model and retrieves the response.
-
-    Example (Mocked):
-    -----------------
-    Demonstrates how to use the Together AI client with a mocked API call for safe testing.
-
-    >>> from unittest.mock import patch
-    >>> client = TogetherLLMClient(api_key="fake_api_key")
-    >>> with patch.object(client, 'get_response', return_value="Mocked Together AI response"):
-    ...     response = client.get_response(
-    ...         prompt="Tell me a joke.",
-    ...         model="together/gpt-neoxt-chat-20B",
-    ...         temperature=0.9,
-    ...         max_tokens=50
-    ...     )
-    >>> print(response)
-    Mocked Together AI response
     """
 
     def __init__(self, api_key: str):
@@ -315,22 +348,6 @@ class TogetherLLMClient(LLMClient):
         ------
         - Exception:
             If the API request fails.
-
-        Example (Mocked):
-        -----------------
-        Demonstrates how to safely test the method without making an actual API call.
-
-        >>> from unittest.mock import patch
-        >>> client = TogetherLLMClient(api_key="fake_api_key")
-        >>> with patch.object(client, 'get_response', return_value="Mocked Together AI response"):
-        ...     response = client.get_response(
-        ...         prompt="Tell me a joke.",
-        ...         model="together/gpt-neoxt-chat-20B",
-        ...         temperature=0.9,
-        ...         max_tokens=50
-        ...     )
-        >>> print(response)
-        Mocked Together AI response
         """
         temperature = kwargs.get("temperature", 0.7)
         max_tokens = kwargs.get("max_tokens", 500)
@@ -356,72 +373,50 @@ def get_llm_client(provider: str, config: dict) -> LLMClient:
     """
     Factory function to instantiate an LLM client based on the specified provider.
 
-    Parameters:
+    Parameters
     ----------
-    - provider (str):
+    provider : str
         The name of the language model provider. Supported values are:
-            - `'azure'`: For Azure OpenAI models.
-            - `'together'`: For Together AI models.
+            - 'azure': For Azure OpenAI models.
+            - 'openai': For standard OpenAI models.
+            - 'together': For Together AI models.
 
-    - config (dict):
-        A dictionary containing configuration parameters required by the provider.
+    config : dict
+        A dictionary containing configuration parameters required by the selected provider.
 
-        - For **Azure OpenAI**, required keys are:
-            - `'api_key'`: Azure API key.
-            - `'endpoint'`: Azure OpenAI endpoint URL.
-            - `'api_version'`: API version (e.g., `'2023-05-15'`).
+        For **Azure OpenAI**:
+            - 'api_key':       Azure API key.
+            - 'endpoint':      Azure OpenAI endpoint URL.
+            - 'api_version':   API version (e.g., '2023-05-15').
 
-        - For **Together AI**, required key:
-            - `'api_key'`: Together AI API key.
+        For **standard OpenAI**:
+            - 'api_key':       OpenAI API key (e.g., from OPENAI_API_KEY environment variable).
 
-    Returns:
+        For **Together AI**:
+            - 'api_key':       Together AI API key.
+
+    Returns
     -------
-    - LLMClient:
-        An instance of `OpenAILLMClient` or `TogetherLLMClient` based on the provider.
+    LLMClient
+        An instance of one of the following, depending on provider:
+            - AzureOpenAILLMClient
+            - OpenAILLMClient (standard OpenAI)
+            - TogetherLLMClient
 
-    Raises:
+    Raises
     ------
-    - ValueError:
+    ValueError
         If an unknown provider is specified.
-
-    Examples (Mocked):
-    ------------------
-    Demonstrates how to instantiate clients with mocked API calls.
-
-    >>> from unittest.mock import patch
-    >>> azure_config = {
-    ...     'api_key': 'fake_azure_key',
-    ...     'endpoint': 'https://fake-endpoint.azure.com/',
-    ...     'api_version': '2023-05-15'
-    ... }
-    >>> with patch.object(OpenAILLMClient, '__init__', return_value=None) as MockAzureClient:
-    ...     client = get_llm_client(provider='azure', config=azure_config)
-    ...     MockAzureClient.assert_called_with(
-    ...         api_key='fake_azure_key',
-    ...         endpoint='https://fake-endpoint.azure.com/',
-    ...         api_version='2023-05-15'
-    ... )
-
-    >>> together_config = {'api_key': 'fake_together_key'}
-    >>> with patch.object(TogetherLLMClient, '__init__', return_value=None) as MockTogetherClient:
-    ...     client = get_llm_client(provider='together', config=together_config)
-    ...     MockTogetherClient.assert_called_with(api_key='fake_together_key')
-
-    Example (Error Case):
-    ---------------------
-    >>> invalid_config = {'api_key': 'fake_key'}
-    >>> get_llm_client(provider='invalid', config=invalid_config)
-    Traceback (most recent call last):
-        ...
-    ValueError: Unknown provider: invalid
     """
     if provider.lower() == "azure":
-        return OpenAILLMClient(
+        return AzureOpenAILLMClient(
             api_key=config["api_key"],
             endpoint=config["endpoint"],
             api_version=config["api_version"],
         )
-    elif provider.lower() == "together":
+    elif provider == "openai":
+        return OpenAILLMClient(api_key=config["api_key"])
+    elif provider == "together":
         return TogetherLLMClient(api_key=config["api_key"])
     else:
         raise ValueError(f"Unknown provider: {provider}")
