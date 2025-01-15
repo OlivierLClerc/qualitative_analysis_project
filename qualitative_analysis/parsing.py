@@ -191,85 +191,104 @@ def extract_code_from_response(
 
 def extract_global_validity(
     results_df: pd.DataFrame,
-    id_pattern: str = r"Id:\s*(\w+)",
+    id_column: str = "Id",
     label_column: str = "Label",
-    verbatim_column: str = "Verbatim",
     global_validity_column: str = "Global_Validity",
-    verbatim_output_column: str = "Verbatim",
 ) -> pd.DataFrame:
     """
     Extracts the overall validity of each cycle based on sequential binary classification results.
 
     This function groups classification results by a unique identifier (`Id`) and evaluates whether all
-    associated binary labels are positive (`1`). It also aggregates corresponding verbatim comments.
+    associated binary labels are positive (`1`). It prints a warning if NaN values are detected.
 
     Parameters:
     ----------
     results_df : pd.DataFrame
-        DataFrame containing the classification results with binary labels and verbatim comments.
+        DataFrame containing subject IDs and classification labels.
 
-    id_pattern : str, optional
-        Regular expression pattern to extract the `Id` from the `verbatim_column`.
-        Default is `r'Id:\\s*(\\w+)'`.
+    id_column : str, optional
+        Column name containing the subject ID. Default is 'Id'.
 
     label_column : str, optional
-        Column name containing binary classification labels (`0` or `1`). Default is `'Label'`.
-
-    verbatim_column : str, optional
-        Column name containing the text data or verbatim comments. Default is `'Verbatim'`.
+        Column name containing binary classification labels. Default is 'Label'.
 
     global_validity_column : str, optional
-        Column name for the output column that stores the overall validity result. Default is `'Global_Validity'`.
-
-    verbatim_output_column : str, optional
-        Column name for the output column that stores aggregated verbatim comments. Default is `'Verbatim'`.
+        Column name for the global validity output. Default is 'Global_Validity'.
 
     Returns:
     -------
     pd.DataFrame
-        A DataFrame grouped by `Id` with two columns:
-        - `{verbatim_output_column}`: Aggregated verbatim comments.
-        - `{global_validity_column}`: `1` if all labels are `1`, otherwise `0`.
+        Original DataFrame with an additional column for the global validity,
+        indicating if all labels for a subject are `1` (valid) or `0` (invalid).
 
-    Example:
-    -------
-    >>> import pandas as pd
-    >>> data = {
-    ...     'Verbatim': ['Id: A Comment 1', 'Id: A Comment 2', 'Id: B Comment 3', 'Id: B Comment 4'],
-    ...     'Label': [1, 1, 1, 0]
+    Examples:
+    ---------
+    **Example 1: All labels are 1 → Global Validity = 1**
+    >>> data1 = {
+    ...     'Id': ['BC23', 'BC23', 'BC23'],
+    ...     'Theme': ['Identify Step', 'Guess Step', 'Assess Step'],
+    ...     'Label': [1, 1, 1]
     ... }
-    >>> df = pd.DataFrame(data)
-    >>> result = extract_global_validity(df)
-    >>> result[['Id', 'Verbatim', 'Global_Validity']]
-      Id                         Verbatim  Global_Validity
-    0  A  Id: A Comment 1 Id: A Comment 2                1
-    1  B  Id: B Comment 3 Id: B Comment 4                0
+    >>> df1 = pd.DataFrame(data1)
+    >>> extract_global_validity(df1)
+         Id          Theme  Label  Global_Validity
+    0  BC23  Identify Step      1                1
+    1  BC23     Guess Step      1                1
+    2  BC23    Assess Step      1                1
+
+    **Example 2: Contains a NaN → Treated as Invalid (0) with a Warning**
+    >>> data2 = {
+    ...     'Id': ['BC24', 'BC24', 'BC24'],
+    ...     'Theme': ['Identify Step', 'Guess Step', 'Assess Step'],
+    ...     'Label': [1, None, 1]
+    ... }
+    >>> df2 = pd.DataFrame(data2)
+    >>> extract_global_validity(df2)
+    Warning: NaN value detected in the 'Label' column for subject 'BC24'. Treated as invalid (0).
+         Id          Theme  Label  Global_Validity
+    0  BC24  Identify Step      1                0
+    1  BC24     Guess Step      0                0
+    2  BC24    Assess Step      1                0
+
+    **Example 3: Multiple Subjects with Mixed Validity and NaNs**
+    >>> data3 = {
+    ...     'Id': ['BC25', 'BC25', 'BC26', 'BC26'],
+    ...     'Theme': ['Identify Step', 'Assess Step', 'Guess Step', 'Assess Step'],
+    ...     'Label': [1, 1, None, 1]
+    ... }
+    >>> df3 = pd.DataFrame(data3)
+    >>> extract_global_validity(df3)
+    Warning: NaN value detected in the 'Label' column for subject 'BC26'. Treated as invalid (0).
+         Id          Theme  Label  Global_Validity
+    0  BC25  Identify Step      1                1
+    1  BC25    Assess Step      1                1
+    2  BC26     Guess Step      0                0
+    3  BC26    Assess Step      1                0
     """
-    # Extract 'Id' from the specified 'verbatim_column'
-    results_df["Id"] = results_df[verbatim_column].str.extract(id_pattern)
+    # Identify subjects (`Id`) that have NaN values in the label column
+    nan_subjects = results_df[results_df[label_column].isna()][id_column].unique()
 
-    # Ensure the 'label_column' is of integer type
-    results_df[label_column] = results_df[label_column].astype(int)
-
-    # Group by 'Id' and compute overall validity and aggregated verbatim text
-    global_validity = (
-        results_df.groupby("Id")
-        .apply(
-            lambda x: pd.Series(
-                {
-                    verbatim_output_column: " ".join(
-                        x[verbatim_column].unique()
-                    ),  # Aggregated unique verbatim comments
-                    global_validity_column: (
-                        1 if (x[label_column] == 1).all() else 0
-                    ),  # 1 if all labels are 1, else 0
-                }
-            )
+    # Print a warning for each subject with NaN
+    for subject_id in nan_subjects:
+        print(
+            f"Warning: NaN value detected in the '{label_column}' column for subject '{subject_id}'. Treated as invalid (0)."
         )
+
+    # Replace NaNs with 0 and ensure labels are integers
+    results_df[label_column] = results_df[label_column].fillna(0).astype(int)
+
+    # Compute global validity as integer (1 or 0)
+    validity = (
+        results_df.groupby(id_column)[label_column]
+        .apply(lambda x: 1 if (x == 1).all() else 0)
         .reset_index()
     )
+    validity = validity.rename(columns={label_column: global_validity_column})
 
-    return global_validity
+    # Merge global validity back into the original DataFrame
+    results_with_validity = results_df.merge(validity, on=id_column, how="left")
+
+    return results_with_validity
 
 
 def parse_key_value_lines(text: str) -> Dict[str, str]:
