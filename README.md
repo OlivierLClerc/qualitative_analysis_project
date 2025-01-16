@@ -13,9 +13,9 @@ This toolkit provides two modes for automatic annotation of qualitative data:
 
 ### **Use the streamlit server**
 
-Click the link below to run the web app. 
+Click the link below to run the **web app**: 
 
-👉 [Run the Qualitative Analysis App](https://flowanalysis.streamlit.app/)
+[Run the Qualitative Analysis App](https://flowanalysis.streamlit.app/)
 
 ### **Run in Google Colab**
 
