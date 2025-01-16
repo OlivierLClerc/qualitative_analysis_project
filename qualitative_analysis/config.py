@@ -28,6 +28,9 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
         # no special endpoint or api_version.
         # But you could add more keys if needed (org ID, etc.).
     },
+    "together": {
+        "api_key": os.getenv("TOGETHER_API_KEY"),
+    },
 }
 
 

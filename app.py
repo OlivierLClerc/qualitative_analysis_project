@@ -274,69 +274,68 @@ class QualitativeAnalysisApp:
         st.header("Step 5: Choose the Model")
 
         # Step 5.1: Select Provider
-        provider_options = ["OpenAI", "Together"]
+        provider_options = ["OpenAI", "Together", "Azure"]
         selected_provider_display = st.selectbox(
             "Select LLM Provider:", provider_options, key="llm_provider_select"
         )
 
         # Map display name to internal configuration key
-        provider_map = {"OpenAI": "openai", "Together": "together"}
+        provider_map = {"OpenAI": "openai", "Together": "together", "Azure": "azure"}
         internal_provider = provider_map[selected_provider_display]
 
         if internal_provider not in config.MODEL_CONFIG:
             st.error(f"Missing configuration for provider: {internal_provider}")
             return
 
-        # Step 5.2: API Key Input (Corrected)
+        # Step 5.2: Check for API Key in config or ask user to input
+        existing_api_key = config.MODEL_CONFIG[internal_provider].get("api_key")
+
         st.sidebar.subheader("🔐 API Key Configuration")
-        api_key_placeholder = (
-            "sk-..." if selected_provider_display == "OpenAI" else "together-..."
-        )
+        api_key_placeholder = {
+            "openai": "sk-...",
+            "together": "together-...",
+            "azure": "azure-...",
+        }.get(internal_provider, "Enter API Key")
+
+        # Ask for user input if no key is found in the config
         api_key = st.sidebar.text_input(
-            f"Enter your {selected_provider_display} API Key",
+            f"Enter your {selected_provider_display} API Key (or leave blank to use .env)",
             type="password",
             placeholder=api_key_placeholder,
-            help=f"Provide your {selected_provider_display} API key to proceed.",
+            help=f"Provide your {selected_provider_display} API key or use the .env key.",
         )
 
-        if not api_key:
+        # Use user input if provided, otherwise use config key
+        final_api_key = api_key or existing_api_key
+
+        if not final_api_key:
             st.warning(
-                f"⚠️ Please enter your {selected_provider_display} API key to continue."
+                f"⚠️ Please enter your {selected_provider_display} API key or set it in the .env file."
             )
             st.stop()
         else:
-            st.session_state["api_key"] = api_key
+            st.session_state["api_key"] = final_api_key
             st.success(f"{selected_provider_display} API Key loaded successfully!")
 
-        # Pass the API key inside the config dictionary
+        # Step 5.3: Pass API Key in Config
         provider_config = config.MODEL_CONFIG[internal_provider].copy()
-        provider_config["api_key"] = api_key  # Add the API key into the config
+        provider_config["api_key"] = final_api_key
 
-        # Initialize the LLM client with the updated config
         self.llm_client = get_llm_client(
-            provider=internal_provider,
-            config=provider_config,  # Pass the entire config with the API key included
+            provider=internal_provider, config=provider_config
         )
 
-        # Step 5.3: Select Model
+        # Step 5.4: Select Model
         if selected_provider_display == "OpenAI":
             model_options = ["gpt-4o", "gpt-4o-mini"]
-        else:
+        elif selected_provider_display == "Together":
             model_options = ["together/gpt-neoxt-chat-20B"]
+        else:  # Azure models can vary
+            model_options = ["gpt-4o", "gpt-4o-mini"]
 
-        default_model = (
-            self.selected_model
-            if self.selected_model in model_options
-            else model_options[0]
-        )
         chosen_model = st.selectbox(
             "Select Model:",
             model_options,
-            index=(
-                model_options.index(default_model)
-                if default_model in model_options
-                else 0
-            ),
             key="llm_model_select",
         )
 
