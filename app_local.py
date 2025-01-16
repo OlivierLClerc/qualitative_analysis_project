@@ -273,52 +273,18 @@ class QualitativeAnalysisApp:
         """
         st.header("Step 5: Choose the Model")
 
-        # Step 5.1: Select Provider
         provider_options = ["OpenAI", "Together"]
         selected_provider_display = st.selectbox(
             "Select LLM Provider:", provider_options, key="llm_provider_select"
         )
 
-        # Map display name to internal configuration key
-        provider_map = {"OpenAI": "openai", "Together": "together"}
+        provider_map = {"OpenAI": "azure", "Together": "together"}
         internal_provider = provider_map[selected_provider_display]
 
         if internal_provider not in config.MODEL_CONFIG:
             st.error(f"Missing configuration for provider: {internal_provider}")
             return
 
-        # Step 5.2: API Key Input (Corrected)
-        st.sidebar.subheader("🔐 API Key Configuration")
-        api_key_placeholder = (
-            "sk-..." if selected_provider_display == "OpenAI" else "together-..."
-        )
-        api_key = st.sidebar.text_input(
-            f"Enter your {selected_provider_display} API Key",
-            type="password",
-            placeholder=api_key_placeholder,
-            help=f"Provide your {selected_provider_display} API key to proceed.",
-        )
-
-        if not api_key:
-            st.warning(
-                f"⚠️ Please enter your {selected_provider_display} API key to continue."
-            )
-            st.stop()
-        else:
-            st.session_state["api_key"] = api_key
-            st.success(f"{selected_provider_display} API Key loaded successfully!")
-
-        # Pass the API key inside the config dictionary
-        provider_config = config.MODEL_CONFIG[internal_provider].copy()
-        provider_config["api_key"] = api_key  # Add the API key into the config
-
-        # Initialize the LLM client with the updated config
-        self.llm_client = get_llm_client(
-            provider=internal_provider,
-            config=provider_config,  # Pass the entire config with the API key included
-        )
-
-        # Step 5.3: Select Model
         if selected_provider_display == "OpenAI":
             model_options = ["gpt-4o", "gpt-4o-mini"]
         else:
@@ -342,6 +308,10 @@ class QualitativeAnalysisApp:
 
         self.selected_model = chosen_model
         st.session_state["selected_model"] = chosen_model
+
+        self.llm_client = get_llm_client(
+            provider=internal_provider, config=config.MODEL_CONFIG[internal_provider]
+        )
 
     def run_analysis(self) -> None:
         """
