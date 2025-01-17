@@ -19,8 +19,12 @@ Click the link below to run the **web app**:
 
 ### **Run in Google Colab**
 
-Click the badge below to run the notebook directly in **Google Colab**:
+Click the badge below to run the notebooks directly in **Google Colab**:
 
+Starter notebook:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/notebook_multiclass_colab.ipynb)
+
+Sequential analysis notebook:
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/notebook_sequential_binary_colab.ipynb)
 
 ## **Run Locally (Full Control)**
@@ -120,7 +124,7 @@ QUALITATIVE_ANALYSIS_PROJECT
 ├── mypy.ini
 └── README.md
 ```
-## 📂 Main Files and folders
+## Main Files and folders
 
 ### `app.py`
 A Streamlit app providing a GUI workflow for uploading data, configuring LLMs, classifying text, and optionally comparing with external judgments.
@@ -140,13 +144,13 @@ The main Python package, housing modules
 ### `codebook/`
 Contains human-readable text files defining classification rules or codebooks (binary/multiclass).
 
-## 📄 Other Files
+## Other Files
 
 - **`.env`** – Environment variables for sensitive credentials (e.g., API keys, endpoints).
 - **`.pre-commit-config.yaml`** – Config for pre-commit hooks (linting, formatting, etc.).
 - **`mypy.ini`** – Configuration for static type checks (mypy).
 
-## 🤝 Contributing
+## Contributing
 
 - **Coding Style**: This repo uses type hints and docstrings heavily (see `mypy.ini` for static checks).
 - **Pre-Commit Hooks**: Use `.pre-commit-config.yaml` for linting/formatting. Install pre-commit hooks:
@@ -156,13 +160,3 @@ Contains human-readable text files defining classification rules or codebooks (b
     ```
 
 - **Pull Requests**: Please branch off `main` or `dev`, open a PR, and ensure you pass all lint/tests.
-
-## 📜 License
-
-
-## 📚 Acknowledgments / References
-
-- OpenAI / Azure Docs
-- Together AI Documentation
-- Streamlit Official Docs
-- Pandas User Guide
