@@ -142,7 +142,7 @@ Holds CSV samples (for various classification scenarios), plus an `outputs/` sub
 The main Python package, housing modules
 
 ### `codebook/`
-Contains human-readable text files defining classification rules or codebooks (binary/multiclass).
+Contains text files defining classification rules or codebooks (binary/multiclass).
 
 ## Other Files
 
@@ -152,11 +152,9 @@ Contains human-readable text files defining classification rules or codebooks (b
 
 ## Contributing
 
-- **Coding Style**: This repo uses type hints and docstrings heavily (see `mypy.ini` for static checks).
+- **Coding Style**: This repo uses type hints and docstrings (see `mypy.ini` for static checks).
 - **Pre-Commit Hooks**: Use `.pre-commit-config.yaml` for linting/formatting. Install pre-commit hooks:
 
     ```bash
     pre-commit install
     ```
-
-- **Pull Requests**: Please branch off `main` or `dev`, open a PR, and ensure you pass all lint/tests.
