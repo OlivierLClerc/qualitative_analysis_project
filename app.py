@@ -25,6 +25,7 @@ import streamlit as st
 import pandas as pd
 from typing import Any, Dict, List, Optional
 import io
+import json
 
 
 class QualitativeAnalysisApp:
@@ -85,6 +86,8 @@ class QualitativeAnalysisApp:
 
         # Steps 2-4 are only relevant if data is uploaded
         if self.data is not None:
+            # Load previous session if a JSON is imported
+            self.load_previous_session()
             # Step 2: Select & Rename Columns, Add Descriptions
             self.select_rename_describe_columns()
 
@@ -93,6 +96,9 @@ class QualitativeAnalysisApp:
 
             # Step 4: Fields to Extract
             self.select_fields()
+
+            # 💾 Offer to Save Session here before moving to Step 5
+            self.save_session()
 
             # Step 5: Configure LLM (provider & model)
             self.configure_llm()
@@ -134,6 +140,53 @@ class QualitativeAnalysisApp:
             except Exception as e:
                 st.error(f"Error loading data: {e}")
                 st.stop()
+
+    def load_previous_session(self) -> None:
+        """
+        Allows the user to upload a previous session configuration and restores the settings.
+        """
+        st.markdown(
+            """
+            <h4>🔄 <b>Load a Previous Session (Optional)</b></h4>
+            <p style='font-size:16px'>
+            If you've used this app before, you can upload your <b>saved session file (JSON)</b> to automatically restore previous settings
+            (selected columns, codebook, examples, etc.).<br><br>
+            🔍 <b>First time here?</b> After setting everything up, you'll have the option to <b>save your session</b> in <b>Step 4</b> 
+            so you can easily continue next time without re-entering everything.
+            </p>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        uploaded_file = st.file_uploader(
+            "Upload your saved session file (JSON):", type=["json"], key="load_session"
+        )
+
+        if uploaded_file is not None:
+            try:
+                # Load the JSON content directly
+                session_data = json.load(uploaded_file)
+
+                # Restore session values
+                self.selected_columns = session_data.get("selected_columns", [])
+                self.column_renames = session_data.get("column_renames", {})
+                self.column_descriptions = session_data.get("column_descriptions", {})
+                self.codebook = session_data.get("codebook", "")
+                self.examples = session_data.get("examples", "")
+                self.selected_fields = session_data.get("selected_fields", [])
+
+                # Update session_state
+                st.session_state["selected_columns"] = self.selected_columns
+                st.session_state["column_renames"] = self.column_renames
+                st.session_state["column_descriptions"] = self.column_descriptions
+                st.session_state["codebook"] = self.codebook
+                st.session_state["examples"] = self.examples
+                st.session_state["selected_fields"] = self.selected_fields
+
+                st.success("✅ Previous session successfully loaded!")
+
+            except Exception as e:
+                st.error(f"❌ Failed to load session: {e}")
 
     def select_rename_describe_columns(self) -> None:
         """
@@ -264,6 +317,55 @@ class QualitativeAnalysisApp:
         self.selected_fields = extracted
         st.session_state["selected_fields"] = extracted
 
+    def save_session(self) -> None:
+        """
+        Allows the user to save the current session configuration (excluding API key).
+        """
+
+        # Custom Header (styled like "Load a Previous Session")
+        st.markdown(
+            """
+            <h4><b>Save Your Session</b></h4>
+            <p style='font-size:16px'>
+            Save your current setup to avoid reconfiguring everything next time. <br><br>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Let the user choose a filename
+        filename_input = st.text_input(
+            "**Enter a filename for your session:**",
+            value="session_config.json",
+            key="filename_input",
+        )
+
+        # Ensure filename ends with .json
+        if not filename_input.endswith(".json"):
+            filename_input += ".json"
+
+        # Session data to save
+        session_data = {
+            "selected_columns": self.selected_columns,
+            "column_renames": self.column_renames,
+            "column_descriptions": self.column_descriptions,
+            "codebook": self.codebook,
+            "examples": self.examples,
+            "selected_fields": self.selected_fields,
+            "selected_model": self.selected_model,
+        }
+
+        # Convert session data to JSON
+        data_json = json.dumps(session_data, indent=4)
+
+        # Download button
+        st.download_button(
+            label="💾 **Save Session Configuration**",
+            data=data_json,
+            file_name=filename_input,  # Dynamic filename
+            mime="application/json",
+            key="save_session_button",
+        )
+
     def configure_llm(self) -> None:
         st.header("Step 5: Choose the Model")
 
@@ -310,6 +412,11 @@ class QualitativeAnalysisApp:
                 type="password",
                 placeholder=api_key_placeholder,
                 help=f"Provide your {selected_provider_display} API key.",
+            )
+
+            # Privacy notice
+            st.sidebar.info(
+                "🔒 Your API key is used only during this session and is never stored."
             )
 
             if not api_key:
@@ -500,20 +607,43 @@ class QualitativeAnalysisApp:
 
         # Save Results Section (Moved outside the Run Analysis button block)
         if self.results:
-            st.header("Save Results")
+            # Display results as a dataframe preview
             results_df = pd.DataFrame(self.results)
             st.dataframe(results_df)
+            # Styled Header (matching the "Save Session" look)
+            st.markdown(
+                """
+                <h4> <b>Save Analysis Results</b></h4>
+                <p style='font-size:16px'>
+                Download the results of your analysis in Excel format.<br><br>
+                """,
+                unsafe_allow_html=True,
+            )
 
+            # Input for custom filename
+            filename_input = st.text_input(
+                "**Enter a filename for your results:**",
+                value="analysis_results.xlsx",
+                key="results_filename_input",
+            )
+
+            # Ensure the filename ends with .xlsx
+            if not filename_input.endswith(".xlsx"):
+                filename_input += ".xlsx"
+
+            # Convert DataFrame to Excel in-memory
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                 results_df.to_excel(writer, index=False, sheet_name="Results")
             data_xlsx = output.getvalue()
+
+            # Download button with dynamic filename
             st.download_button(
-                label="Download Excel",
+                label="💾 **Download Results as Excel**",
                 data=data_xlsx,
-                file_name="results.xlsx",
+                file_name=filename_input,  # Dynamic filename
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="download_excel_button",
+                key="download_results_button",
             )
 
     def compare_with_external_judgments(self) -> None:
