@@ -81,6 +81,23 @@ class QualitativeAnalysisApp:
         """
         st.title("Qualitative Analysis")
 
+        # App Purpose Explanation
+        st.markdown(
+            """
+            ### About This App
+            This **Qualitative Analysis App** is designed to help you analyze qualitative datasets 
+            using Large Language Models.
+            You will need a dataset to analyse and a codebook.
+
+            **Workflow Overview:**
+            - Upload your dataset.  
+            - Configure how LLMs should classify or analyze the data.  
+            - Run the analysis and review results.  
+            - Optionally compare with external human judgments.  
+            """,
+            unsafe_allow_html=True,
+        )
+
         # Step 1: Upload Dataset
         self.upload_dataset()
 
@@ -97,7 +114,7 @@ class QualitativeAnalysisApp:
             # Step 4: Fields to Extract
             self.select_fields()
 
-            # 💾 Offer to Save Session here before moving to Step 5
+            # Offer to Save Session here before moving to Step 5
             self.save_session()
 
             # Step 5: Configure LLM (provider & model)
@@ -116,6 +133,27 @@ class QualitativeAnalysisApp:
         - Loads data into `self.data` and session_state.
         """
         st.header("Step 1: Upload Your Dataset")
+
+        # Expected Data Format Explanation
+        st.markdown(
+            """
+            ### Expected Data Format
+            Your dataset should be in **CSV** or **Excel (XLSX)** format.
+
+            **Required Structure:**  
+            - Each **row** must have a **unique ID** and represent a single entry to be analyzed.  
+            - The dataset should contain at least **two columns**:  
+                - One for the **unique identifier** (e.g., `ID`).  
+                - One or more **data columns** containing the text or information to analyze.  
+            - You can add as many additional columns as needed. You may ask different questions for different columns (which would be indicated in your Codebook).  
+            - **Optional:** Include one or more columns with **human annotations** to compare against the LLM-generated analysis and compute an inter-annotator agreement score.
+            """
+        )
+
+        # Upload and Display Example Image for Data Format
+        # st.markdown("**Example Dataset Format:**")
+        # st.image("images/example_data_format.png", caption="Example of the expected dataset format.", use_container_width=True)
+
         uploaded_file = st.file_uploader("Upload CSV or XLSX", type=["csv", "xlsx"])
 
         if uploaded_file is not None:
@@ -151,7 +189,7 @@ class QualitativeAnalysisApp:
             <p style='font-size:16px'>
             If you've used this app before, you can upload your <b>saved session file (JSON)</b> to automatically restore previous settings
             (selected columns, codebook, examples, etc.).<br><br>
-            🔍 <b>First time here?</b> After setting everything up, you'll have the option to <b>save your session</b> in <b>Step 4</b> 
+            <b>First time here?</b> After setting everything up, you'll have the option to <b>save your session</b> in <b>Step 4</b> 
             so you can easily continue next time without re-entering everything.
             </p>
             """,
@@ -195,7 +233,7 @@ class QualitativeAnalysisApp:
 
         Stores processed data in `self.processed_data` and session_state.
         """
-        st.header("Step 2: Select, Rename, and Describe Columns")
+        st.header("Step 2: Select, Rename, Describe and Clean Columns")
 
         if self.data is None:
             st.error("No dataset loaded.")
@@ -208,7 +246,10 @@ class QualitativeAnalysisApp:
         # Filter out invalid columns
         valid_previous_selection = [col for col in previous_selection if col in columns]
 
-        st.write("Select which columns to include in your analysis:")
+        st.write("Select the data columns for analysis.")
+        st.write(
+            "*Tip: If your dataset has human annotation columns, you should probably leave them out here. You'll be able to upload them later for comparison.*"
+        )
         self.selected_columns = st.multiselect(
             "Columns to include:",
             options=columns,
@@ -242,6 +283,16 @@ class QualitativeAnalysisApp:
             )
             self.column_descriptions[col_key] = desc
         st.session_state["column_descriptions"] = self.column_descriptions
+
+        st.markdown(
+            """ 
+            Select textual data columns to clean and normalize for better analysis.
+            - Extra spaces and unwanted characters will be removed.  
+            - Accents and special characters will be simplified for consistent analysis.  
+            - Line breaks will be replaced with spaces for better text processing.  
+            """,
+            unsafe_allow_html=True,
+        )
 
         # Process & sanitize
         if self.selected_columns:
@@ -281,16 +332,58 @@ class QualitativeAnalysisApp:
         that guide the LLM in producing structured responses.
         """
         st.header("Step 3: Codebook & Examples")
+
+        # Guidance on how to write the codebook and examples
+        st.markdown(
+            """
+            ### **Codebook Instructions**
+            The **codebook** is where you define how the data should be analyzed.  
+
+            **Guidelines for Writing the Codebook:**  
+            - Clearly explain the task as you would to a human annotators.  
+            - Define categories or labels if you're performing classification.  
+
+            **Example Codebook:**  
+            *"Analyze the text in the 'Answer' column and classify it into one of the following categories:*  
+            - **1**: Personal opinion  
+            - **2**: Factual information  
+            - **3**: Irrelevant content   
+            """,
+            unsafe_allow_html=True,
+        )
+
         default_codebook = st.session_state.get("codebook", "")
         default_examples = st.session_state.get("examples", "")
 
+        # Standard text area
         codebook_val = st.text_area(
-            "Codebook / Instructions for LLM:",
+            "**Your Codebook / Instructions for LLM:**",
             value=default_codebook,
             key="codebook_textarea",
         )
+
+        st.markdown(
+            """
+            ### **Optional: Add Examples**  
+            Examples can help the model understand how to apply the codebook.  
+            **Important:** Use the **same column names** as in your dataset.
+
+            You can either provide only the classification label or include other fields first, followed by the classification.
+
+            **Example:**  
+            *Input:*  
+            **Answer:** "Green tea is healthy because it contains antioxidants."
+            *Output:*  
+            **Reasoning:** This answer give a reason (antioxidant) why green tea is healthy, therefore being factual.*  
+            **Classification:** 2  
+            """,
+            unsafe_allow_html=True,
+        )
+
         examples_val = st.text_area(
-            "Examples (Optional):", value=default_examples, key="examples_textarea"
+            "**Your examples (Optional):**",
+            value=default_examples,
+            key="examples_textarea",
         )
 
         self.codebook = codebook_val
@@ -306,6 +399,26 @@ class QualitativeAnalysisApp:
         the LLM should return in its JSON output.
         """
         st.header("Step 4: Fields to Extract")
+
+        # Clear explanation for the user
+        st.markdown(
+            """
+            ### **Define Fields to Extract**
+            Specify the **fields** (or categories) you want the model to generate for each entry.  
+            These fields will become **new columns** in your final dataset. 
+            The names you provide here should **match exactly** the field names used in your examples (if provided).  
+
+            **Example:**  
+            If you enter:  
+            `Reasoning, Classification`  
+            
+            The final dataset will include two new columns:  
+            - **Reasoning** (e.g., explanation of the decision)  
+            - **Classification** (e.g., classification label)
+            """,
+            unsafe_allow_html=True,
+        )
+
         default_fields = ",".join(self.selected_fields) if self.selected_fields else ""
         fields_str = st.text_input(
             "Comma-separated fields (e.g. 'Evaluation, Comments')",
@@ -327,7 +440,7 @@ class QualitativeAnalysisApp:
             """
             <h4><b>Save Your Session</b></h4>
             <p style='font-size:16px'>
-            Save your current setup to avoid reconfiguring everything next time. <br><br>
+            Save your current setup to avoid reconfiguring everything next time.
             """,
             unsafe_allow_html=True,
         )
