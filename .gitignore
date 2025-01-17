@@ -107,3 +107,6 @@ pyproject.toml
 # Windows
 Thumbs.db
 ehthumbs.db
+
+# Ignore dev container setup
+.devcontainer/
