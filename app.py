@@ -88,12 +88,6 @@ class QualitativeAnalysisApp:
             This **Qualitative Analysis App** is designed to help you analyze qualitative datasets 
             using Large Language Models.
             You will need a dataset to analyse and a codebook.
-
-            **Workflow Overview:**
-            - Upload your dataset.  
-            - Configure how LLMs should classify or analyze the data.  
-            - Run the analysis and review results.  
-            - Optionally compare with external human judgments.  
             """,
             unsafe_allow_html=True,
         )
