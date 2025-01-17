@@ -9,7 +9,7 @@ This toolkit provides two modes for automatic annotation of qualitative data:
 
 ---
 
-## 🚀 Running without installation
+## Running without installation
 
 ### **Use the streamlit server**
 

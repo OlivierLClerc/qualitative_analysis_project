@@ -400,7 +400,7 @@ class QualitativeAnalysisApp:
             )
             final_api_key = existing_api_key
         else:
-            st.sidebar.subheader("🔐 API Key Configuration")
+            st.sidebar.subheader("API Key Configuration")
             api_key_placeholder = {
                 "openai": "sk-...",
                 "together": "together-...",
