@@ -354,6 +354,7 @@ class QualitativeAnalysisApp:
             "**Your Codebook / Instructions for LLM:**",
             value=default_codebook,
             key="codebook_textarea",
+            height=400,
         )
 
         st.markdown(
@@ -378,6 +379,7 @@ class QualitativeAnalysisApp:
             "**Your examples (Optional):**",
             value=default_examples,
             key="examples_textarea",
+            height=400,
         )
 
         self.codebook = codebook_val
