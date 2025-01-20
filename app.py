@@ -87,7 +87,7 @@ class QualitativeAnalysisApp:
             ### About This App
             This **Qualitative Analysis App** is designed to help you analyze qualitative datasets 
             using Large Language Models.
-            You will need a dataset to analyse and a codebook.
+            You will need a dataset to analyse, a codebook, and a valid API key (form OpenAi or Together).
             """,
             unsafe_allow_html=True,
         )
