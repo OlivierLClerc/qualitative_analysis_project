@@ -110,3 +110,6 @@ ehthumbs.db
 
 # Ignore dev container setup
 .devcontainer/
+
+# history
+history.txt

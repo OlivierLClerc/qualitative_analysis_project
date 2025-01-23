@@ -30,7 +30,8 @@ from qualitative_analysis.parsing import (
 )
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
 from qualitative_analysis.cost_estimation import UsageProtocol
-from typing import List, Dict, Any, Tuple
+import pandas as pd
+from typing import List, Dict, Any, Tuple, Optional
 
 
 def generate_multiclass_classification_answer(
@@ -530,3 +531,92 @@ def process_verbatims_for_binary_criteria(
     print(f"Total Cost for Processing: ${total_cost:.4f}")
 
     return results, verbatim_costs
+
+
+def process_general_verbatims(
+    verbatims_subset: List[str],
+    llm_client,
+    model_name: str,
+    prompt_template: str,
+    prefix: Optional[str] = None,
+    temperature: float = 0.0,
+    verbose: bool = False,
+) -> Tuple[pd.DataFrame, List[Dict[str, Any]], Dict[str, float]]:
+    """
+    Single-step classification approach for a list of verbatims.
+
+    Parameters
+    ----------
+    verbatims_subset : List[str]
+        List of verbatim texts to classify.
+
+    llm_client : object
+        An LLM client or wrapper that can call the chosen model.
+
+    model_name : str
+        The name of the model to use for inference.
+
+    prompt_template : str
+        A string template for building the prompt, e.g.:
+           "You are an assistant...\n\nInput:\n{verbatim_text}\n\nRespond with 0 or 1."
+
+    verbose : bool, optional
+        If True, prints intermediate information for debugging.
+
+    Returns
+    -------
+    results_df : pd.DataFrame
+        A DataFrame with the parsed fields from `verbatim_text` plus a "Label" column.
+
+    verbatim_costs : List[Dict[str, Any]]
+        A list of dictionaries containing usage and cost info per verbatim.
+
+    totals : Dict[str, float]
+        A dictionary containing aggregated totals (e.g., total tokens, total cost).
+    """
+    results = []
+    verbatim_costs = []
+    total_tokens_used = 0
+    total_cost = 0.0
+
+    for idx, verbatim_text in enumerate(verbatims_subset, start=1):
+        if verbose:
+            print(f"\n=== Processing Verbatim {idx}/{len(verbatims_subset)} ===")
+
+        try:
+            final_prompt = prompt_template.format(verbatim_text=verbatim_text)
+            response_text, usage = llm_client.get_response(
+                prompt=final_prompt,
+                model=model_name,
+                max_tokens=500,
+                temperature=temperature,
+                verbose=verbose,
+            )
+
+            label = extract_code_from_response(response_text, prefix=prefix)
+            print(f"Label: {label}")
+
+            cost = 0.0
+            if usage:
+                cost = openai_api_calculate_cost(usage, model_name)
+                total_tokens_used += usage.total_tokens
+                total_cost += cost
+
+            results.append({"Verbatim": verbatim_text, "Label": label})
+            verbatim_costs.append(
+                {
+                    "Verbatim": verbatim_text,
+                    "Tokens Used": usage.total_tokens if usage else 0,
+                    "Cost": cost,
+                }
+            )
+
+        except Exception as e:
+            print(f"Error: {e}")
+            results.append({"Verbatim": verbatim_text, "Label": None})
+            verbatim_costs.append(
+                {"Verbatim": verbatim_text, "Tokens Used": 0, "Cost": 0}
+            )
+
+    totals = {"total_tokens_used": total_tokens_used, "total_cost": total_cost}
+    return pd.DataFrame(results), verbatim_costs, totals

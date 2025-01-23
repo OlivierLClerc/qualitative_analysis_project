@@ -20,6 +20,7 @@ from .model_interaction import (
 from .notebooks_functions import (
     process_verbatims_for_multiclass_criteria,
     process_verbatims_for_binary_criteria,
+    process_general_verbatims,
 )
 from .parsing import (
     parse_llm_response,
@@ -28,6 +29,7 @@ from .parsing import (
 )
 from .prompt_construction import build_data_format_description, construct_prompt
 from .cost_estimation import openai_api_calculate_cost
+from .logging import calculate_and_log
 
 __all__ = [
     "load_data",
@@ -46,8 +48,10 @@ __all__ = [
     "construct_prompt",
     "process_verbatims_for_multiclass_criteria",
     "process_verbatims_for_binary_criteria",
+    "process_general_verbatims",
     "parse_llm_response",
     "openai_api_calculate_cost",
     "extract_code_from_response",
     "load_results_from_csv",
+    "calculate_and_log",
 ]
