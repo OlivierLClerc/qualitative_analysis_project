@@ -27,6 +27,7 @@ Functions:
 from qualitative_analysis.parsing import (
     extract_code_from_response,
     parse_key_value_lines,
+    parse_llm_response,
 )
 from qualitative_analysis.cost_estimation import openai_api_calculate_cost
 from qualitative_analysis.cost_estimation import UsageProtocol
@@ -540,61 +541,126 @@ def process_general_verbatims(
     prompt_template: str,
     prefix: Optional[str] = None,
     temperature: float = 0.0,
+    json_output: bool = False,
+    selected_fields: Optional[List[str]] = None,
     verbose: bool = False,
 ) -> Tuple[pd.DataFrame, List[Dict[str, Any]], Dict[str, float]]:
     """
-    Single-step classification approach for a list of verbatims.
+    Processes a list of verbatims by querying a language model for each verbatim,
+    then extracts either a code (default) or specific JSON fields from the response.
+
+    This function can operate in two modes:
+      1) **Classic/Prefix Mode** (if `json_output=False`):
+         Uses `extract_code_from_response` to parse out a single "Label" from the LLM response
+         based on a specified `prefix`.
+      2) **JSON Mode** (if `json_output=True`):
+         Expects the LLM response to be valid JSON; then uses `parse_llm_response`
+         to extract the fields listed in `selected_fields`.
+         The "Label" is taken from `parsed.get("Validity")` by default (though you can alter that as needed).
 
     Parameters
     ----------
     verbatims_subset : List[str]
-        List of verbatim texts to classify.
+        A list of verbatim (text) entries to process.
 
     llm_client : object
-        An LLM client or wrapper that can call the chosen model.
+        An LLM client (or wrapper) that implements a `.get_response(...)` method to communicate with the model.
 
     model_name : str
-        The name of the model to use for inference.
+        Name (or identifier) of the language model to use for classification/inference.
 
     prompt_template : str
-        A string template for building the prompt, e.g.:
-           "You are an assistant...\n\nInput:\n{verbatim_text}\n\nRespond with 0 or 1."
+        A string template used to build the final prompt for each verbatim.
+        Must contain `"{verbatim_text}"` as a placeholder. Example:
+          "You are an assistant...\n\nInput:\n{verbatim_text}\n\nRespond with 0 or 1."
 
-    verbose : bool, optional
-        If True, prints intermediate information for debugging.
+    prefix : Optional[str], default=None
+        If `json_output=False`, indicates the substring or prefix used by `extract_code_from_response`
+        to locate the classification code within the LLM response.
+
+    temperature : float, default=0.0
+        Model generation temperature. Higher values produce more creative outputs.
+
+    json_output : bool, default=False
+        If True, the function expects valid JSON in the LLM response.
+        Parsing is done via `parse_llm_response`, and you must provide `selected_fields`.
+
+    selected_fields : Optional[List[str]], default=None
+        The keys to extract from the LLM's JSON response. If `json_output=True` but
+        no `selected_fields` is provided, the function raises a ValueError.
+        Typically includes ["Validity", "Reasoning"], etc.
+
+    verbose : bool, default=False
+        If True, prints intermediate debugging logs and partial results.
 
     Returns
     -------
     results_df : pd.DataFrame
-        A DataFrame with the parsed fields from `verbatim_text` plus a "Label" column.
+        A DataFrame with columns:
+          - "Verbatim": The original verbatim text.
+          - "Label": The extracted code or JSON field (e.g. "Validity").
 
     verbatim_costs : List[Dict[str, Any]]
-        A list of dictionaries containing usage and cost info per verbatim.
+        A list of dictionaries, each containing:
+          - "Verbatim": The original text.
+          - "Tokens Used": The model's token usage for this call (if available).
+          - "Cost": The estimated cost for this single inference call.
 
     totals : Dict[str, float]
-        A dictionary containing aggregated totals (e.g., total tokens, total cost).
+        Aggregated totals across all verbatims:
+          - "total_tokens_used": Sum of tokens used.
+          - "total_cost": Accumulated cost for all requests.
+
+    Raises
+    ------
+    ValueError
+        If `json_output=True` but `selected_fields` is None or empty.
+        (User must specify which fields to parse from JSON.)
     """
     results = []
     verbatim_costs = []
     total_tokens_used = 0
     total_cost = 0.0
 
+    # If user sets json_output=True but didn't provide fields => enforce at least one field.
+    if json_output and (not selected_fields or len(selected_fields) == 0):
+        raise ValueError(
+            "You must provide at least one field name in `selected_fields` when `json_output=True`."
+        )
+
     for idx, verbatim_text in enumerate(verbatims_subset, start=1):
         if verbose:
             print(f"\n=== Processing Verbatim {idx}/{len(verbatims_subset)} ===")
 
         try:
+            # print("Just before prompt")
+            # print(f"Verbatim: {verbatim_text}")
             final_prompt = prompt_template.format(verbatim_text=verbatim_text)
+            # print(f"Prompt: {final_prompt}")
             response_text, usage = llm_client.get_response(
                 prompt=final_prompt,
                 model=model_name,
-                max_tokens=500,
+                max_tokens=10000,
                 temperature=temperature,
                 verbose=verbose,
             )
+            # print(f"Raw response: {response_text}")  # Critical for debugging
+            # print(f"Usage: {usage}")  # Critical for debugging
 
-            label = extract_code_from_response(response_text, prefix=prefix)
-            print(f"Label: {label}")
+            # JSON Mode
+            if json_output:
+                assert selected_fields is not None  # needed for mypy
+                parsed = parse_llm_response(
+                    response_text, selected_fields=selected_fields
+                )
+                label = parsed.get("Validity", None)  # default label from JSON
+                if verbose:
+                    print("Parsed JSON =>", parsed)
+            # Classic Prefix Mode
+            else:
+                label = extract_code_from_response(response_text, prefix=prefix)
+                if verbose:
+                    print(f"Extracted code => {label}")
 
             cost = 0.0
             if usage:
@@ -612,10 +678,21 @@ def process_general_verbatims(
             )
 
         except Exception as e:
-            print(f"Error: {e}")
-            results.append({"Verbatim": verbatim_text, "Label": None})
+            # Add full error context
+            print(f"Critical Error processing verbatim {idx}:")
+            print(f"Verbatim: {verbatim_text[:50]}...")  # First 50 chars
+            print(f"Error Type: {type(e).__name__}")
+            print(f"Error Message: {str(e)}")
+
+            # Store full error details
+            results.append({"Verbatim": verbatim_text, "Label": None, "Error": str(e)})
             verbatim_costs.append(
-                {"Verbatim": verbatim_text, "Tokens Used": 0, "Cost": 0}
+                {
+                    "Verbatim": verbatim_text,
+                    "Tokens Used": 0,
+                    "Cost": 0,
+                    "Error": str(e),
+                }
             )
 
     totals = {"total_tokens_used": total_tokens_used, "total_cost": total_cost}

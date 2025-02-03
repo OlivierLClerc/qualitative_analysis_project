@@ -85,25 +85,40 @@ def parse_llm_response(evaluation_text: str, selected_fields: list) -> dict:
     {'Evaluation': None, 'Comments': None}
     """
     try:
-        # Search for a JSON object within the evaluation_text
-        json_text_match = re.search(r"\{.*\}", evaluation_text, re.DOTALL)
-        if json_text_match:
-            json_text = json_text_match.group(0)
-            # Parse the JSON text
-            evaluation_json = json.loads(json_text)
-            # Extract the specified fields
-            return {
-                field: evaluation_json.get(field, None) for field in selected_fields
-            }
-        else:
-            raise ValueError("No JSON object found in the LLM response.")
-    except json.JSONDecodeError as e:
-        # Handle JSON decoding errors
-        print(f"JSON decoding error: {e}")
-        return {field: None for field in selected_fields}
+        # Step 1: Find JSON block (including markdown variants)
+        json_match = re.search(
+            r"(?:```(?:json)?\n)?({.*?})(?:\n```)?", evaluation_text, re.DOTALL
+        )
+
+        if not json_match:
+            raise ValueError("No JSON found in response")
+
+        # Step 2: Clean JSON string
+        json_str = json_match.group(1)
+
+        # Remove comments and trailing commas
+        json_str = re.sub(
+            r"/\*.*?\*/|//.*?$|#.*?$|,\s*}(?=\s*$)",
+            "",
+            json_str,
+            flags=re.DOTALL | re.MULTILINE,
+        )
+
+        # Step 3: Parse JSON
+        parsed = json.loads(json_str)
+
+        # Step 4: Validate types
+        if "Validity" in parsed:
+            if isinstance(parsed["Validity"], str):
+                parsed["Validity"] = int(parsed["Validity"])  # Try conversion
+            if parsed["Validity"] not in (0, 1):
+                raise ValueError(f"Invalid Validity: {parsed['Validity']}")
+
+        return {field: parsed.get(field) for field in selected_fields}
+
     except Exception as e:
-        # Handle other exceptions
-        print(f"Error parsing LLM response: {e}")
+        print(f"Parsing Error: {str(e)}")
+        print(f"Cleaned JSON Attempt: {json_str}")
         return {field: None for field in selected_fields}
 
 
