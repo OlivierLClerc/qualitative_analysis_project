@@ -17,6 +17,10 @@ Click the link below to run the **web app**:
 
 [Run the Qualitative Analysis App](https://flowanalysis.streamlit.app/)
 
+Click the link below to run the **manual annotator**: 
+
+[Run the Manual annotator](https://datannotator.streamlit.app/)
+
 ### **Run in Google Colab**
 
 Click the badge below to run the notebooks directly in **Google Colab**:
