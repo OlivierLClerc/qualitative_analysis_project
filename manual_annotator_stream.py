@@ -71,7 +71,7 @@ def load_questions(file):
     return questions
 
 
-# Use st.cache_resource to avoid reloading the model repeatedly.
+# Cache the transformer so that it is only loaded once.
 @st.cache_resource(show_spinner=False)
 def get_translator():
     return pipeline("translation_fr_to_en", model="Helsinki-NLP/opus-mt-fr-en")
@@ -83,8 +83,6 @@ def main():
     # --- Initialize session state variables ---
     if "df" not in st.session_state:
         st.session_state.df = None
-    if "df_translated" not in st.session_state:
-        st.session_state.df_translated = None
     if "translated_rows" not in st.session_state:
         st.session_state.translated_rows = {}
     if "current_index" not in st.session_state:
@@ -105,27 +103,7 @@ def main():
             st.session_state.df = pd.read_csv(
                 uploaded_file, delimiter=";", quoting=1
             ).reset_index(drop=True)
-
-        # --- Optional: Translate entire dataset (if desired) ---
-        translate_dataset = st.checkbox(
-            "Translate entire dataset to English", key="translate_dataset"
-        )
-        if translate_dataset and st.session_state.df_translated is None:
-            st.info("Translating entire dataset... This may take a moment.")
-            # Translate all columns except the rating column (if exists)
-            rating_col = (
-                st.session_state.new_col_name if st.session_state.new_col_name else None
-            )
-            st.session_state.df_translated = translate_entire_dataset(
-                st.session_state.df, rating_col
-            )
-            st.success("Dataset translated!")
-        # Use translated dataset if available; otherwise, use original.
-        df_to_use = (
-            st.session_state.df_translated
-            if st.session_state.df_translated is not None
-            else st.session_state.df
-        )
+        df = st.session_state.df
 
         # --- Step 2: Ask for annotator name ---
         annotator = st.text_input(
@@ -141,8 +119,8 @@ def main():
             if st.button("Confirm Annotator Name"):
                 if st.session_state.annotator_name:
                     candidate_col = f"Rater_{st.session_state.annotator_name}"
-                    if candidate_col not in df_to_use.columns:
-                        df_to_use[candidate_col] = pd.NA
+                    if candidate_col not in df.columns:
+                        df[candidate_col] = pd.NA
                     st.session_state.new_col_name = candidate_col
                     st.success(f"Column '{candidate_col}' created!")
                     st.rerun()
@@ -171,7 +149,7 @@ def main():
 
             # --- Step 4: Select columns to display ---
             possible_columns = [
-                c for c in df_to_use.columns if c != st.session_state.new_col_name
+                c for c in df.columns if c != st.session_state.new_col_name
             ]
             selected_columns = st.multiselect(
                 "Select columns to display:",
@@ -185,43 +163,39 @@ def main():
                 if idx < 0:
                     st.session_state.current_index = 0
                     idx = 0
-                if idx >= len(df_to_use):
-                    st.session_state.current_index = len(df_to_use) - 1
-                    idx = len(df_to_use) - 1
+                if idx >= len(df):
+                    st.session_state.current_index = len(df) - 1
+                    idx = len(df) - 1
 
-                rating_val = df_to_use.at[idx, st.session_state.new_col_name]
+                rating_val = df.at[idx, st.session_state.new_col_name]
                 st.markdown(f"**Current Index: {idx}**")
                 st.markdown(f"**Existing Rating:** {rating_val}")
                 for col in selected_columns:
-                    st.write(f"**{col}:** {df_to_use.at[idx, col]}")
+                    st.write(f"**{col}:** {df.at[idx, col]}")
 
-                # --- Row Translation Option (if dataset translation is not used) ---
-                # If you did not translate the entire dataset, you can still translate the current row on demand.
-                if not st.session_state.df_translated:
-                    translate_row = st.checkbox(
-                        "Translate current row to English", key="translate_row"
-                    )
-                    if translate_row:
-                        # Use a cache of translated rows to avoid re-translating the same row.
-                        if "translated_rows" not in st.session_state:
-                            st.session_state.translated_rows = {}
-                        if idx not in st.session_state.translated_rows:
-                            translator = get_translator()
-                            translated = {}
-                            for col in selected_columns:
-                                text = str(df_to_use.at[idx, col])
-                                try:
-                                    result = translator(text)
-                                    translated[col] = result[0]["translation_text"]
-                                except Exception as e:
-                                    st.error(f"Error translating column '{col}': {e}")
-                            st.session_state.translated_rows[idx] = translated
-                        translated = st.session_state.translated_rows[idx]
-                        st.markdown("### Translated Row:")
-                        for col, trans in translated.items():
-                            st.write(f"**{col}:** {trans}")
+                # --- Row Translation Option: Translate current row on demand ---
+                translate_row = st.checkbox(
+                    "Translate current row to English", key="translate_row"
+                )
+                if translate_row:
+                    # Check if this row has already been translated
+                    if idx not in st.session_state.translated_rows:
+                        translator = get_translator()
+                        translated = {}
+                        for col in selected_columns:
+                            text = str(df.at[idx, col])
+                            try:
+                                result = translator(text)
+                                translated[col] = result[0]["translation_text"]
+                            except Exception as e:
+                                st.error(f"Error translating column '{col}': {e}")
+                        st.session_state.translated_rows[idx] = translated
+                    translated = st.session_state.translated_rows[idx]
+                    st.markdown("### Translated Row:")
+                    for col, trans in translated.items():
+                        st.write(f"**{col}:** {trans}")
 
-                # Navigation buttons below the data
+                # --- Navigation buttons below the data ---
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Previous"):
@@ -231,9 +205,7 @@ def main():
                 with col2:
                     if st.button("Next"):
                         save_current_answers(idx, st.session_state.sidebar_answers)
-                        st.session_state.current_index = min(
-                            len(df_to_use) - 1, idx + 1
-                        )
+                        st.session_state.current_index = min(len(df) - 1, idx + 1)
                         st.rerun()
 
             # --- Step 6: Download button ---
@@ -267,24 +239,6 @@ def main():
                         key=f"sidebar_q_{i}",
                     )
                     st.session_state.sidebar_answers[i] = answer
-
-
-def translate_entire_dataset(df, rating_col):
-    """
-    Translates all columns (except rating_col if provided) of the DataFrame from French to English.
-    This is done cell-by-cell and may be slow for large datasets.
-    """
-    translator = get_translator()
-    df_translated = df.copy()
-    for col in df.columns:
-        if rating_col is not None and col == rating_col:
-            continue
-        df_translated[col] = (
-            df_translated[col]
-            .astype(str)
-            .apply(lambda text: translator(text)[0]["translation_text"])
-        )
-    return df_translated
 
 
 def save_current_answers(row_idx, answers_dict, warn_if_incomplete=False):
