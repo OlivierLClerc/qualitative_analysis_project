@@ -19,7 +19,7 @@ Click the link below to run the **web app**:
 
 Click the link below to run the **manual annotator**: 
 
-[Run the Manual annotator](https://datannotator.streamlit.app/)
+[Run the Manual annotator](https://datannotate.streamlit.app/)
 
 ### **Run in Google Colab**
 
