@@ -110,3 +110,10 @@ ehthumbs.db
 
 # Ignore dev container setup
 .devcontainer/
+
+# history
+history.txt
+
+# exploratory
+exploratory_notebooks/
+data/wax_human_labelled_all_workers.csv
