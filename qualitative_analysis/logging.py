@@ -59,7 +59,7 @@ def calculate_and_log(df: pd.DataFrame, filename: str = "history.txt") -> None:
                 # Extract the cumulative cost by parsing the last line
                 if "Cumulative Cost all runs:" in last_line:
                     cumulative_cost = float(
-                        last_line.split("CumCumulative Cost all runs:")[-1].strip()
+                        last_line.split("Cumulative Cost all runs:")[-1].strip()
                     )
     except FileNotFoundError:
         pass  # File does not exist; start with a cumulative cost of 0
