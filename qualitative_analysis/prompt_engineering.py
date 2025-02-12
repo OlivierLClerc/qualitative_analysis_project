@@ -31,7 +31,10 @@ from typing import List, Dict, Any, Optional, Tuple
 from qualitative_analysis.model_interaction import get_llm_client
 from qualitative_analysis.alt_test import run_alt_test_general
 from qualitative_analysis.notebooks_functions import process_general_verbatims
-from qualitative_analysis.evaluation import compute_cohens_kappa
+from qualitative_analysis.evaluation import (
+    compute_cohens_kappa,
+    compute_human_accuracies,
+)
 import qualitative_analysis.config as config
 
 
@@ -131,6 +134,7 @@ def call_llm2_for_improvement(
     Returns a dictionary with keys "new_prompt" and "changes" if successful.
     """
     history_text = json.dumps(prompt_history, indent=2) if prompt_history else "None"
+    print(f"Response template: {response_template}")
 
     # Remove the response template from current_prompt if needed
     if json_output and response_template:
@@ -215,9 +219,7 @@ def run_iterative_prompt_improvement(
     alt_test: bool = True,
     errors_examples: float = 0.6,  # Fraction of examples that should be error examples
     examples_to_give: int = 10,  # Maximum total number of examples to pass to LLM2
-    json_output: bool = False,
-    selected_fields: Optional[List[str]] = None,
-    response_template: str = "",
+    epsilon: float = 0.1,
     verbose: bool = True,
 ) -> Tuple[str, float, List[Dict[str, Any]]]:
     """
@@ -252,6 +254,10 @@ def run_iterative_prompt_improvement(
     max_iterations = scenario.get("max_iterations", 3)
     n_completions = scenario.get("n_completions", 1)
     initial_prompt = scenario["template"]
+
+    response_template = scenario.get("response_template", None)
+    json_output = scenario.get("json_output", False)
+    selected_fields = scenario.get("selected_fields", None)
 
     scenario_info = {
         "data_set": scenario.get("data_set", "default_data_set"),
@@ -331,7 +337,7 @@ def run_iterative_prompt_improvement(
                 df=train_data,
                 annotation_columns=annotation_columns,
                 model_col="ModelPrediction",
-                epsilon=0.1,
+                epsilon=epsilon,
                 alpha=0.05,
                 verbose=verbose,
             )
@@ -371,7 +377,7 @@ def run_iterative_prompt_improvement(
                 df=val_data,
                 annotation_columns=annotation_columns,
                 model_col="ModelPrediction",
-                epsilon=0.1,
+                epsilon=epsilon,
                 alpha=0.05,
                 verbose=verbose,
             )
@@ -409,6 +415,15 @@ def run_iterative_prompt_improvement(
         }
         prompt_history.append(history_entry)
 
+        # Compute human annotator accuracies on the training and validation sets.
+        train_human_accuracies = compute_human_accuracies(
+            train_data, annotation_columns, ground_truth_column=ground_truth_column
+        )
+        val_human_accuracies = compute_human_accuracies(
+            val_data, annotation_columns, ground_truth_column=ground_truth_column
+        )
+
+        # Build the iteration row dictionary with your existing metrics.
         row = {
             "data_set": scenario_info["data_set"],
             "N_train": scenario_info["N_train"],
@@ -430,6 +445,17 @@ def run_iterative_prompt_improvement(
             "cost": total_cost,
             "running_time_s": train_time_s + val_time_s,
         }
+
+        # Add one column per annotator's accuracy (for both train and validation).
+        for annotator in annotation_columns:
+            row[f"{annotator}_train_acc"] = train_human_accuracies.get(
+                annotator, float("nan")
+            )
+            row[f"{annotator}_val_acc"] = val_human_accuracies.get(
+                annotator, float("nan")
+            )
+
+        # Append the row to your iteration results.
         iteration_rows.append(row)
 
         if accuracy_val > best_accuracy:

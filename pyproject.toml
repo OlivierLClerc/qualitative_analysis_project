@@ -48,7 +48,7 @@ dependencies = [
   "openai==1.54.1",
   "httpx==0.27.2",
   "regex==2024.9.11",
-  "transformers==4.46.2"
+  "transformers==4.48.3"
 ]
 
 # [project.optional-dependencies]

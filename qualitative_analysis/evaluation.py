@@ -23,10 +23,9 @@ Functions:
       and between human annotators, visualized as heatmaps.
 """
 
-from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import cohen_kappa_score, accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
 from typing import List, Dict, Optional, Union, Mapping
 
 
@@ -306,3 +305,28 @@ def plot_confusion_matrices(
 
         plt.tight_layout()
         plt.show()
+
+
+def compute_human_accuracies(df, annotation_columns, ground_truth_column="GroundTruth"):
+    """
+    Computes the accuracy for each human annotator using sklearn's accuracy_score.
+
+    Parameters:
+      df (pd.DataFrame): DataFrame containing the annotator columns and ground truth.
+      annotation_columns (List[str]): List of human annotator column names.
+      ground_truth_column (str): Name of the column with the ground truth labels.
+
+    Returns:
+      Dict[str, float]: A dictionary mapping each annotator to their accuracy.
+    """
+    accuracies = {}
+    for col in annotation_columns:
+        # Filter out invalid annotations.
+        valid_mask = df[col].notnull() & (df[col] != "")
+        if valid_mask.sum() > 0:
+            y_true = df.loc[valid_mask, ground_truth_column]
+            y_pred = df.loc[valid_mask, col]
+            accuracies[col] = accuracy_score(y_true, y_pred)
+        else:
+            accuracies[col] = float("nan")
+    return accuracies
