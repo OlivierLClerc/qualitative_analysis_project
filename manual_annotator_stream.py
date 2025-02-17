@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import json
+import io
 from transformers import pipeline
+from qualitative_analysis import load_data
 
 # Inject CSS to adjust overall layout, radio buttons, and spacing
 st.markdown(
@@ -71,10 +73,52 @@ def load_questions(file):
     return questions
 
 
-# Cache the transformer so that it is only loaded once.
+# Cache the translator so that it is only loaded once.
 @st.cache_resource(show_spinner=False)
 def get_translator():
     return pipeline("translation_fr_to_en", model="Helsinki-NLP/opus-mt-fr-en")
+
+
+def save_current_answers(row_idx, answers_dict, warn_if_incomplete=False):
+    """
+    Saves the user's answers for the given row into the DataFrame.
+    If a fast label is selected, it takes precedence over the question answers.
+    """
+    df = st.session_state.df
+    new_col = st.session_state.new_col_name
+
+    # Read the fast label value from its widget (key "fast_label")
+    fast_label = st.session_state.get("fast_label", "")
+    if fast_label != "":
+        df.at[row_idx, new_col] = fast_label
+        # Optionally, save individual question answers as well
+        for q_idx, val in answers_dict.items():
+            st.session_state.answers[(row_idx, q_idx)] = val
+        return True
+
+    # If no questions were loaded, there's nothing to do for the row
+    if not st.session_state.questions:
+        return True
+
+    # Verify all answers are "yes" or "no"
+    all_filled = all(a in ("yes", "no") for a in answers_dict.values())
+    if not all_filled:
+        if warn_if_incomplete:
+            st.warning("Not all questions answered. Row not fully saved.")
+        # Save partial answers to session, but do not finalize row
+        for q_idx, val in answers_dict.items():
+            st.session_state.answers[(row_idx, q_idx)] = val
+        return False
+
+    # If all "yes", set 1, otherwise 0
+    all_yes = all(a == "yes" for a in answers_dict.values())
+    df.at[row_idx, new_col] = 1 if all_yes else 0
+
+    # Store answers in session state for reference
+    for q_idx, val in answers_dict.items():
+        st.session_state.answers[(row_idx, q_idx)] = val
+
+    return True
 
 
 def main():
@@ -95,13 +139,17 @@ def main():
         st.session_state.new_col_name = ""
     if "answers" not in st.session_state:
         st.session_state.answers = {}
+    # Fast labels definition input (do not use key "fast_label" here)
+    if "fast_labels_text" not in st.session_state:
+        st.session_state.fast_labels_text = ""
 
     # --- Step 1: File upload for data ---
     uploaded_file = st.file_uploader("Upload a CSV File", type=["csv"], key="data_file")
     if uploaded_file is not None:
         if st.session_state.df is None:
-            st.session_state.df = pd.read_csv(
-                uploaded_file, delimiter=";", quoting=1
+            # Use the load_data function from the qualitative_analysis module
+            st.session_state.df = load_data(
+                uploaded_file, file_type="csv", delimiter=";"
             ).reset_index(drop=True)
         df = st.session_state.df
 
@@ -114,7 +162,7 @@ def main():
         if annotator:
             st.session_state.annotator_name = annotator
 
-        # Only create the new column when the user confirms the annotator name.
+        # Create the new column once the annotator name is confirmed.
         if st.session_state.new_col_name == "":
             if st.button("Confirm Annotator Name"):
                 if st.session_state.annotator_name:
@@ -147,6 +195,14 @@ def main():
                     st.session_state.questions.append(new_question)
                     st.success(f"Added question: {new_question}")
 
+            # --- Fast Labelling Definition ---
+            st.markdown("### Fast Labelling Definition")
+            st.text_input(
+                "Define Fast Labels (comma separated):",
+                key="fast_labels_text",
+                placeholder="e.g., 0, 1 or cat, dog, bird",
+            )
+
             # --- Step 4: Select columns to display ---
             possible_columns = [
                 c for c in df.columns if c != st.session_state.new_col_name
@@ -173,12 +229,11 @@ def main():
                 for col in selected_columns:
                     st.write(f"**{col}:** {df.at[idx, col]}")
 
-                # --- Row Translation Option: Translate current row on demand ---
+                # --- Row Translation Option ---
                 translate_row = st.checkbox(
                     "Translate current row to English", key="translate_row"
                 )
                 if translate_row:
-                    # Check if this row has already been translated
                     if idx not in st.session_state.translated_rows:
                         translator = get_translator()
                         translated = {}
@@ -195,35 +250,88 @@ def main():
                     for col, trans in translated.items():
                         st.write(f"**{col}:** {trans}")
 
-                # --- Navigation buttons below the data ---
-                col1, col2 = st.columns(2)
+                # --- Navigation buttons (Previous, Next, Unvalid) ---
+                col1, col2, col3 = st.columns(3)
+
+                # --- Previous
                 with col1:
                     if st.button("Previous"):
                         save_current_answers(idx, st.session_state.sidebar_answers)
                         st.session_state.current_index = max(0, idx - 1)
                         st.rerun()
+
+                # --- Next
                 with col2:
                     if st.button("Next"):
                         save_current_answers(idx, st.session_state.sidebar_answers)
                         st.session_state.current_index = min(len(df) - 1, idx + 1)
                         st.rerun()
 
-            # --- Step 6: Download button ---
-            st.write("**When done, you can download the updated CSV:**")
-            csv_data = st.session_state.df.to_csv(index=False, encoding="utf-8-sig")
+                # --- Unvalid data
+                with col3:
+                    if st.button("Unvalid data"):
+                        save_current_answers(idx, st.session_state.sidebar_answers)
+                        # Create/ensure the flagged column exists
+                        flag_col = f"{st.session_state.annotator_name}_flagged"
+                        if flag_col not in df.columns:
+                            df[flag_col] = pd.NA
+                        # Mark the current row as flagged
+                        df.at[idx, flag_col] = 1
+                        # Move to the next row
+                        st.session_state.current_index = min(len(df) - 1, idx + 1)
+                        st.rerun()
+
+                # --- Fast Label Selection (Displayed Under the Data) ---
+                fast_labels = [
+                    label.strip()
+                    for label in st.session_state.get("fast_labels_text", "").split(",")
+                    if label.strip()
+                ]
+                if fast_labels:
+                    selected_fast_label = st.radio(
+                        "Select Fast Label (overrides questions):",
+                        options=[""] + fast_labels,
+                        key="fast_label",
+                    )
+                    if selected_fast_label:
+                        st.markdown(f"**Fast Label Selected:** {selected_fast_label}")
+
+            # --- Step 6: Download Excel with Dynamic Filename ---
+            st.write("**When done, you can download the updated data as Excel:**")
+
+            # 1) Ask user for a filename
+            filename_input = st.text_input(
+                "Enter a filename for your results:",
+                value="annotated_data.xlsx",
+                key="results_filename_input",
+            )
+            # Ensure ends with .xlsx
+            if not filename_input.endswith(".xlsx"):
+                filename_input += ".xlsx"
+
+            # 2) Create in-memory BytesIO buffer
+            excel_buffer = io.BytesIO()
+            # 3) Write the DataFrame to this buffer as an Excel file
+            with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+                st.session_state.df.to_excel(writer, index=False)
+
+            # 4) Provide the download button for Excel file (using user-defined filename)
             st.download_button(
-                label="Download Annotations",
-                data=csv_data,
-                file_name="annotated_data.csv",
-                mime="text/csv",
+                label="Download Excel (.xlsx)",
+                data=excel_buffer.getvalue(),
+                file_name=filename_input,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
 
-            # --- Step 7: Annotation interface in the sidebar ---
-            st.sidebar.header("Annotation Questions")
-            if "sidebar_answers" not in st.session_state:
-                st.session_state.sidebar_answers = {}
-
+            # --- Step 7: Show the sidebar only if there is at least one question ---
             if st.session_state.questions:
+                st.sidebar.header("Annotation Questions")
+
+                # Ensure we have a dict for the answers in the sidebar
+                if "sidebar_answers" not in st.session_state:
+                    st.session_state.sidebar_answers = {}
+
+                # Display each question in the sidebar
                 for i, question in enumerate(st.session_state.questions):
                     previous_choice = st.session_state.sidebar_answers.get(i, "")
                     options = ["", "yes", "no"]
@@ -239,34 +347,6 @@ def main():
                         key=f"sidebar_q_{i}",
                     )
                     st.session_state.sidebar_answers[i] = answer
-
-
-def save_current_answers(row_idx, answers_dict, warn_if_incomplete=False):
-    """
-    Saves the user's Yes/No answers for the given row into the DataFrame.
-    This function always recalculates the rating based on the current answers.
-    """
-    df = st.session_state.df
-    new_col = st.session_state.new_col_name
-
-    if not st.session_state.questions:
-        return True
-
-    all_filled = all(a in ("yes", "no") for a in answers_dict.values())
-    if not all_filled:
-        if warn_if_incomplete:
-            st.warning("Not all questions answered. Row not fully saved.")
-        for q_idx, val in answers_dict.items():
-            st.session_state.answers[(row_idx, q_idx)] = val
-        return False
-
-    all_yes = all(a == "yes" for a in answers_dict.values())
-    df.at[row_idx, new_col] = 1 if all_yes else 0
-
-    for q_idx, val in answers_dict.items():
-        st.session_state.answers[(row_idx, q_idx)] = val
-
-    return True
 
 
 if __name__ == "__main__":

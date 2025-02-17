@@ -50,6 +50,7 @@ dependencies = [
   "regex==2024.9.11",
   "transformers==4.48.3",
   "torch==2.6.0",
+  "torchvision==0.21.0",
   "sentencepiece==0.2.0",
 ]
 
