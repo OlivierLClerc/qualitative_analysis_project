@@ -167,10 +167,13 @@ def main():
             if st.button("Confirm Annotator Name"):
                 if st.session_state.annotator_name:
                     candidate_col = f"Rater_{st.session_state.annotator_name}"
+                    flag_col = f"Unvalid_{st.session_state.annotator_name}"  # Create flagged column name
                     if candidate_col not in df.columns:
                         df[candidate_col] = pd.NA
+                    if flag_col not in df.columns:
+                        df[flag_col] = False  # Set default value to False
                     st.session_state.new_col_name = candidate_col
-                    st.success(f"Column '{candidate_col}' created!")
+                    st.success(f"Columns '{candidate_col}' and '{flag_col}' created!")
                     st.rerun()
 
         # --- Optional: Load questions automatically from a file ---
@@ -203,9 +206,12 @@ def main():
                 placeholder="e.g., 0, 1 or cat, dog, bird",
             )
 
-            # --- Step 4: Select columns to display ---
+            # --- Step 4: Select columns to display (excluding rating and flagged columns) ---
+            flag_col = f"Unvalid_{st.session_state.annotator_name}"
             possible_columns = [
-                c for c in df.columns if c != st.session_state.new_col_name
+                c
+                for c in df.columns
+                if c not in [st.session_state.new_col_name, flag_col]
             ]
             selected_columns = st.multiselect(
                 "Select columns to display:",
@@ -223,9 +229,16 @@ def main():
                     st.session_state.current_index = len(df) - 1
                     idx = len(df) - 1
 
+                # Display the annotator's rating
                 rating_val = df.at[idx, st.session_state.new_col_name]
                 st.markdown(f"**Current Index: {idx}**")
                 st.markdown(f"**Existing Rating:** {rating_val}")
+
+                # Display the flagged value (from the flagged column)
+                flagged_val = df.at[idx, flag_col] if flag_col in df.columns else None
+                st.markdown(f"**Is Unvalid:** {flagged_val}")
+
+                # Then display the selected data columns
                 for col in selected_columns:
                     st.write(f"**{col}:** {df.at[idx, col]}")
 
@@ -258,6 +271,7 @@ def main():
                     if st.button("Previous"):
                         save_current_answers(idx, st.session_state.sidebar_answers)
                         st.session_state.current_index = max(0, idx - 1)
+                        st.session_state.fast_label = ""
                         st.rerun()
 
                 # --- Next
@@ -265,20 +279,18 @@ def main():
                     if st.button("Next"):
                         save_current_answers(idx, st.session_state.sidebar_answers)
                         st.session_state.current_index = min(len(df) - 1, idx + 1)
+                        st.session_state.fast_label = ""
                         st.rerun()
 
                 # --- Unvalid data
                 with col3:
                     if st.button("Unvalid data"):
                         save_current_answers(idx, st.session_state.sidebar_answers)
-                        # Create/ensure the flagged column exists
-                        flag_col = f"{st.session_state.annotator_name}_flagged"
-                        if flag_col not in df.columns:
-                            df[flag_col] = pd.NA
-                        # Mark the current row as flagged
-                        df.at[idx, flag_col] = 1
+                        # Set the flagged column to True
+                        df.at[idx, flag_col] = True
                         # Move to the next row
                         st.session_state.current_index = min(len(df) - 1, idx + 1)
+                        st.session_state.fast_label = ""
                         st.rerun()
 
                 # --- Fast Label Selection (Displayed Under the Data) ---
