@@ -58,7 +58,7 @@ def main():
         1. **Upload Data** (CSV)  
         2. **Set Annotator Name** (creates a new column for your annotations)  
         3. **Upload Codebook** (TXT) to display instructions on the sidebar (optional)  
-        4. **Define Fast Labels**  
+        4. **Define Labels**  
         5. **Select Columns to Display**  
         6. **Annotate Row-by-Row**  
         7. **Download Updated Data**  
