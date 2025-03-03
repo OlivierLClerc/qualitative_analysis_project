@@ -30,6 +30,7 @@ from .parsing import (
 from .prompt_construction import build_data_format_description, construct_prompt
 from .cost_estimation import openai_api_calculate_cost
 from .logging import calculate_and_log
+from .alt_test import run_alt_test_general
 
 __all__ = [
     "load_data",
@@ -54,4 +55,5 @@ __all__ = [
     "extract_code_from_response",
     "load_results_from_csv",
     "calculate_and_log",
+    "run_alt_test_general",
 ]

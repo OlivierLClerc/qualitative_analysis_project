@@ -219,8 +219,9 @@ def run_alt_test_general(
     if model_col not in df.columns:
         raise ValueError(f"DataFrame does not have the model column '{model_col}'.")
 
-    # Create a boolean DataFrame marking valid (non-null, non-empty) annotations.
-    valid_mask = df[annotation_columns].applymap(lambda x: pd.notnull(x) and x != "")
+    # This produces a boolean DataFrame where True means "value is not-null and not an empty string."
+    valid_mask = df[annotation_columns].notna() & df[annotation_columns].ne("")
+
     # Filter rows to only those with at least 3 valid annotations.
     df_valid = df[valid_mask.sum(axis=1) >= 3].copy()
     if df_valid.empty:
