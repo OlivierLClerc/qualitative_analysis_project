@@ -15,7 +15,7 @@ This toolkit provides two modes for automatic annotation of qualitative data:
 
 Click the link below to run the **web app**: 
 
-[Run the Qualitative Analysis App](https://flowanalysis.streamlit.app/)
+[Run the Qualitative Analysis App](https://flowanalysis.streamlit.main_app/)
 
 Click the link below to run the **manual annotator**: 
 
