@@ -135,7 +135,7 @@ def main():
                     df[flag_col] = False
                 st.session_state.new_col_name = candidate_col
                 st.success(f"Created/Found columns '{candidate_col}' and '{flag_col}'!")
-                st.experimental_rerun()
+                st.rerun()
 
     if not st.session_state.new_col_name:
         st.stop()
@@ -261,7 +261,7 @@ def main():
             # Reset fast_label and go previous
             st.session_state.fast_label = ""
             st.session_state.current_index = max(0, idx - 1)
-            st.experimental_rerun()
+            st.rerun()
 
     with c2:
         if st.button("Next"):
@@ -272,7 +272,7 @@ def main():
             # Reset fast_label and go next
             st.session_state.fast_label = ""
             st.session_state.current_index = min(len(df) - 1, idx + 1)
-            st.experimental_rerun()
+            st.rerun()
 
     with c3:
         if st.button("Unvalid data"):
@@ -285,7 +285,7 @@ def main():
             # Reset fast_label and go next
             st.session_state.fast_label = ""
             st.session_state.current_index = min(len(df) - 1, idx + 1)
-            st.experimental_rerun()
+            st.rerun()
 
     # Fast Label (below data)
     fast_labels = [
