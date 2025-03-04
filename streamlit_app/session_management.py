@@ -35,10 +35,27 @@ def load_previous_session(app_instance: Any) -> None:
 
             # Restore session values
             app_instance.selected_columns = session_data.get("selected_columns", [])
-            app_instance.column_renames = session_data.get("column_renames", {})
-            app_instance.column_descriptions = session_data.get(
-                "column_descriptions", {}
-            )
+
+            # Get column_renames and ensure it only includes selected columns
+            loaded_column_renames = session_data.get("column_renames", {})
+            filtered_column_renames = {}
+            for col in app_instance.selected_columns:
+                if col in loaded_column_renames:
+                    filtered_column_renames[col] = loaded_column_renames[col]
+                else:
+                    filtered_column_renames[col] = (
+                        col  # Default to column name if no rename found
+                    )
+            app_instance.column_renames = filtered_column_renames
+
+            # Get column_descriptions and ensure it only includes renamed selected columns
+            loaded_column_descriptions = session_data.get("column_descriptions", {})
+            filtered_column_descriptions = {}
+            renamed_values = list(filtered_column_renames.values())
+            for col, desc in loaded_column_descriptions.items():
+                if col in renamed_values:
+                    filtered_column_descriptions[col] = desc
+            app_instance.column_descriptions = filtered_column_descriptions
             app_instance.codebook = session_data.get("codebook", "")
             app_instance.examples = session_data.get("examples", "")
             app_instance.selected_fields = session_data.get("selected_fields", [])
@@ -99,10 +116,23 @@ def save_session(app_instance: Any) -> None:
     if not filename_input.endswith(".json"):
         filename_input += ".json"
 
+    # Ensure column_renames only includes selected columns
+    filtered_column_renames = {}
+    for col in app_instance.selected_columns:
+        if col in app_instance.column_renames:
+            filtered_column_renames[col] = app_instance.column_renames[col]
+
+    # Ensure column_descriptions only includes renamed selected columns
+    filtered_column_descriptions = {}
+    renamed_values = list(filtered_column_renames.values())
+    for col, desc in app_instance.column_descriptions.items():
+        if col in renamed_values:
+            filtered_column_descriptions[col] = desc
+
     session_data = {
         "selected_columns": app_instance.selected_columns,
-        "column_renames": app_instance.column_renames,
-        "column_descriptions": app_instance.column_descriptions,
+        "column_renames": filtered_column_renames,
+        "column_descriptions": filtered_column_descriptions,
         "codebook": app_instance.codebook,
         "examples": app_instance.examples,
         "selected_fields": app_instance.selected_fields,

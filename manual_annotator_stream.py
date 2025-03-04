@@ -53,15 +53,16 @@ def main():
         You will be able to load your codebook (instructions) and define the labels you want to use.
         The tool will guide you through each row, allowing you to annotate them one by one.
         **Unvalid** rows can be flagged (it will create a new column for each annotator).
-        
+
         **Steps**  
         1. **Upload Data** (CSV)  
-        2. **Set Annotator Name** (creates a new column for your annotations)  
-        3. **Upload Codebook** (TXT) to display instructions on the sidebar (optional)  
-        4. **Define Labels**  
-        5. **Select Columns to Display**  
-        6. **Annotate Row-by-Row**  
-        7. **Download Updated Data**  
+        2. **Optionally Filter** rows based on existing annotation columns  
+        3. **Set Annotator Name** (creates a new column for your annotations)  
+        4. **Upload Codebook** (TXT) to display instructions on the sidebar (optional)  
+        5. **Define Labels**  
+        6. **Select Columns to Display**  
+        7. **Annotate Row-by-Row**  
+        8. **Download Updated Data**  
         """
     )
 
@@ -106,9 +107,46 @@ def main():
     df = st.session_state.df
 
     # --------------------------------
-    # STEP 2: Set Annotator Name
+    # SHOW A HEADER / PREVIEW
     # --------------------------------
-    st.header("Step 2: Set Annotator Name")
+    st.write("Here are the first 5 rows of your data (preview):")
+    st.dataframe(df.head())  # NEW/CHANGED
+
+    # --------------------------------
+    # STEP 2 (OPTIONAL): Filter rows based on existing annotation columns
+    # --------------------------------
+    st.header("Step 2: (Optional) Filter by Existing Annotation Columns")
+
+    # Use a stable key for the multiselect, and provide a default from session state
+    annotation_cols = st.multiselect(
+        label="Select column(s) that contain existing human annotations:",
+        options=df.columns,
+        default=st.session_state.get("selected_annotation_cols", []),
+        help="Only rows with non-null values in ALL selected columns will be kept.",
+        key="annotation_cols_key",  # Unique key
+    )
+
+    # Update our session state copy of the selection
+    st.session_state["selected_annotation_cols"] = annotation_cols
+
+    # Perform the filtering if annotation_cols are selected
+    if annotation_cols:
+        st.session_state.df = df.dropna(subset=annotation_cols, how="any").reset_index(
+            drop=True
+        )
+        st.success(
+            f"Data filtered to {len(st.session_state.df)} rows with non-null "
+            f"values in {', '.join(annotation_cols)}."
+        )
+        df = st.session_state.df
+        if len(df) == 0:
+            st.warning("No rows left after filtering! Please adjust your filters.")
+            st.stop()
+
+    # --------------------------------
+    # STEP 3: Set Annotator Name
+    # --------------------------------
+    st.header("Step 3: Set Annotator Name")
 
     annotator = st.text_input(
         "Annotator Name / Initials:",
@@ -141,9 +179,9 @@ def main():
         st.stop()
 
     # --------------------------------
-    # STEP 3: Upload Codebook (Optional)
+    # STEP 4: Upload Codebook (Optional)
     # --------------------------------
-    st.header("Step 3: Upload Codebook (Optional)")
+    st.header("Step 4: Upload Codebook (Optional)")
 
     st.markdown(
         "You may upload a TXT file with classification instructions. "
@@ -166,9 +204,9 @@ def main():
         st.sidebar.markdown(formatted_text, unsafe_allow_html=True)
 
     # --------------------------------
-    # STEP 4: Define Labels
+    # STEP 5: Define Labels
     # --------------------------------
-    st.header("Step 4: Define Labels")
+    st.header("Step 5: Define Labels")
 
     st.markdown(
         "Define the possible labels of annotations that you can apply. "
@@ -182,9 +220,9 @@ def main():
     )
 
     # --------------------------------
-    # STEP 5: Select Columns to Display
+    # STEP 6: Select Columns to Display
     # --------------------------------
-    st.header("Step 5: Select Columns to Display")
+    st.header("Step 6: Select Columns to Display")
 
     flag_col = f"Unvalid_{st.session_state.annotator_name}"
     possible_columns = [
@@ -202,9 +240,9 @@ def main():
         st.stop()
 
     # --------------------------------
-    # STEP 6: Annotate Row-by-Row
+    # STEP 7: Annotate Row-by-Row
     # --------------------------------
-    st.header("Step 6: Annotate Rows")
+    st.header("Step 7: Annotate Rows")
 
     idx = st.session_state.current_index
     # Ensure index is in valid range
@@ -225,7 +263,14 @@ def main():
 
     # Display the selected columns
     for col in selected_columns:
-        st.write(f"**{col}:** {df.at[idx, col]}")
+        val = df.at[idx, col]
+
+        if pd.notna(val):
+            # If it's a float and has no decimal part, convert to int for display
+            if isinstance(val, float) and val.is_integer():
+                val = int(val)
+
+        st.write(f"**{col}:** {val}")
 
     # Translation (optional)
     translate_row = st.checkbox("Translate this row to English", key="translate_row")
@@ -301,9 +346,9 @@ def main():
             st.markdown(f"**Current Label:** {selected_fast_label}")
 
     # --------------------------------
-    # STEP 7: Download Updated Data
+    # STEP 8: Download Updated Data
     # --------------------------------
-    st.header("Step 7: Download Updated Data")
+    st.header("Step 8: Download Updated Data")
     st.markdown(
         "When you're done (or want to pause), download your annotated data as an Excel file."
     )

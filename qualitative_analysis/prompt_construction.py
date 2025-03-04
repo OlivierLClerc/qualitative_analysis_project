@@ -40,8 +40,7 @@ def build_data_format_description(column_descriptions: dict[str, str]) -> str:
         A formatted string describing the dataset's columns.
     """
     description = "The data has the following columns:\n"
-    # Create a sorted list of column descriptions to maintain consistent order
-    for col, desc in sorted(column_descriptions.items()):
+    for col, desc in column_descriptions.items():
         description += f'- "{col}": {desc}\n'
     return description
 

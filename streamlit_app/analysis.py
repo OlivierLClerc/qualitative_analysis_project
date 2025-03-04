@@ -58,18 +58,18 @@ def _process_data_with_llm(
         )
         st.session_state["data_format_description"] = data_format_description
 
-    # We'll fetch only the renamed columns that the user is analyzing
-    analysis_cols_renamed = list(
-        set(app_instance.column_renames.values()).intersection(data_to_process.columns)
-    )
-
     for i, (idx, row) in enumerate(data_to_process.iterrows()):
         try:
             # Build the text from the selected (renamed) columns in the original order
             # Format numeric values as integers if they're whole numbers
             entry_text_str = ""
-            for col in app_instance.column_renames.values():
-                if col in analysis_cols_renamed and col in row:
+            # Get the list of renamed columns from the selected columns only
+            selected_renamed_cols = [
+                app_instance.column_renames.get(col, col)
+                for col in app_instance.selected_columns
+            ]
+            for col in selected_renamed_cols:
+                if col in row:
                     entry_text_str += f"{col}: {format_value_for_prompt(row[col])}\n"
             # Remove trailing newline
             if entry_text_str.endswith("\n"):
@@ -422,11 +422,15 @@ def run_analysis(
     ):
         # Just process the first row for cost estimation
         first_entry = data_subset.iloc[0]
-        # Build the text from selected/renamed columns in the original order
-        analysis_cols_renamed = list(app_instance.column_renames.values())
+        # Build the text from the selected (renamed) columns in the original order
         entry_text_str = ""
-        for col in app_instance.column_renames.values():
-            if col in analysis_cols_renamed and col in data_subset.columns:
+        # Get the list of renamed columns from the selected columns only
+        selected_renamed_cols = [
+            app_instance.column_renames.get(col, col)
+            for col in app_instance.selected_columns
+        ]
+        for col in selected_renamed_cols:
+            if col in data_subset.columns:
                 entry_text_str += (
                     f"{col}: {format_value_for_prompt(first_entry[col])}\n"
                 )

@@ -151,12 +151,17 @@ def select_rename_describe_columns(
         return None
 
     # 2.3: Rename columns
+    # First, create a new column_renames dictionary that only includes selected columns
+    filtered_column_renames = {}
     for col in app_instance.selected_columns:
         default_rename = app_instance.column_renames.get(col, col)
         new_name = st.text_input(
             f"Rename '{col}' to:", value=default_rename, key=f"rename_{col}"
         )
-        app_instance.column_renames[col] = new_name
+        filtered_column_renames[col] = new_name
+
+    # Update app_instance.column_renames to only include selected columns
+    app_instance.column_renames = filtered_column_renames
     st.session_state["column_renames"] = app_instance.column_renames
 
     # 2.4: Descriptions
@@ -225,11 +230,15 @@ def select_rename_describe_columns(
 
     # Rebuild column_descriptions so it only includes the newly renamed analysis columns
     updated_column_descriptions: Dict[str, str] = {}
+    renamed_values = list(app_instance.column_renames.values())
+
     for col in processed.columns:
-        if col in app_instance.column_renames.values():
+        # Only include columns that are renamed values of selected columns
+        if col in renamed_values:
             updated_column_descriptions[col] = app_instance.column_descriptions.get(
                 col, ""
             )
+
     app_instance.column_descriptions = updated_column_descriptions
     st.session_state["column_descriptions"] = app_instance.column_descriptions
 
