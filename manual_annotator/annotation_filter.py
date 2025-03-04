@@ -66,7 +66,7 @@ def filter_annotations(
         st.success(
             f"Identified {annotated_count} rows with non-null values in {', '.join(selected_annotation_cols)}. "
             f"These rows will be shown during annotation. "
-            f"{unannotated_count} unannotated rows will be included in final download."
+            f"{unannotated_count} more unannotated rows will be included in final download."
         )
 
         if annotated_count == 0:

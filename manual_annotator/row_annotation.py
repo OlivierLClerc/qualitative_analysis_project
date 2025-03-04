@@ -144,78 +144,50 @@ def annotate_rows(
     with c1:
         if st.button("Previous"):
             # Apply the currently selected fast label if any
-            if fast_label != "":
-                df.at[idx, new_col_name] = fast_label
+            if st.session_state.fast_label != "":
+                df.at[idx, new_col_name] = st.session_state.fast_label
 
-            # Reset fast_label and go previous
-            fast_label = ""
+            # Reset the fast label in session state
+            st.session_state.fast_label = ""
 
-            # Handle navigation differently based on whether we're using annotated indices
-            if (
-                annotated_indices
-                and "selected_annotation_cols" in st.session_state
-                and st.session_state["selected_annotation_cols"]
+            # Handle navigation (with annotated indices if applicable)
+            if annotated_indices and st.session_state.get(
+                "selected_annotation_cols", []
             ):
                 current_index = max(0, current_index - 1)
             else:
                 current_index = max(0, current_index - 1)
 
-            # Only update current_index in session state
-            # fast_label is automatically updated by Streamlit
             st.session_state.current_index = current_index
-
             st.rerun()
 
     with c2:
         if st.button("Next"):
-            # Apply the currently selected fast label if any
-            if fast_label != "":
-                df.at[idx, new_col_name] = fast_label
-
-            # Reset fast_label and go next
-            fast_label = ""
-
-            # Handle navigation differently based on whether we're using annotated indices
-            if (
-                annotated_indices
-                and "selected_annotation_cols" in st.session_state
-                and st.session_state["selected_annotation_cols"]
+            if st.session_state.fast_label != "":
+                df.at[idx, new_col_name] = st.session_state.fast_label
+            st.session_state.fast_label = ""
+            if annotated_indices and st.session_state.get(
+                "selected_annotation_cols", []
             ):
                 current_index = min(len(annotated_indices) - 1, current_index + 1)
             else:
                 current_index = min(len(df) - 1, current_index + 1)
-
-            # Only update current_index in session state
-            # fast_label is automatically updated by Streamlit
             st.session_state.current_index = current_index
-
             st.rerun()
 
     with c3:
         if st.button("Unvalid data"):
-            # Mark row as unvalid
             df.at[idx, flag_col] = True
-            # Also apply fast_label if set
-            if fast_label != "":
-                df.at[idx, new_col_name] = fast_label
-
-            # Reset fast_label and go next
-            fast_label = ""
-
-            # Handle navigation differently based on whether we're using annotated indices
-            if (
-                annotated_indices
-                and "selected_annotation_cols" in st.session_state
-                and st.session_state["selected_annotation_cols"]
+            if st.session_state.fast_label != "":
+                df.at[idx, new_col_name] = st.session_state.fast_label
+            st.session_state.fast_label = ""
+            if annotated_indices and st.session_state.get(
+                "selected_annotation_cols", []
             ):
                 current_index = min(len(annotated_indices) - 1, current_index + 1)
             else:
                 current_index = min(len(df) - 1, current_index + 1)
-
-            # Only update current_index in session state
-            # fast_label is automatically updated by Streamlit
             st.session_state.current_index = current_index
-
             st.rerun()
 
     # Fast Label (below data)
@@ -228,9 +200,5 @@ def annotate_rows(
         )
         if selected_fast_label:
             st.markdown(f"**Current Label:** {selected_fast_label}")
-            fast_label = selected_fast_label
-
-            # Don't update session state here - Streamlit does this automatically
-            # when using the key parameter
 
     return df, current_index, fast_label, translated_rows

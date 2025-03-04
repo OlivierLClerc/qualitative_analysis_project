@@ -68,5 +68,6 @@ def download_data(
         label="Download Excel",
         data=excel_buffer.getvalue(),
         file_name=filename_input,
+        key=f"download_button_{filename_input}",  # Dynamic key based on the filename
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
