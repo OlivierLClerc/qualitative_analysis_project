@@ -24,6 +24,9 @@ class QualitativeAnalysisApp:
         from Streamlit's session_state.
         """
         self.data: Optional[pd.DataFrame] = st.session_state.get("data", None)
+        self.original_data: Optional[pd.DataFrame] = st.session_state.get(
+            "original_data", None
+        )
         self.processed_data: Optional[pd.DataFrame] = st.session_state.get(
             "processed_data", None
         )
@@ -49,6 +52,11 @@ class QualitativeAnalysisApp:
 
         self.selected_fields: List[str] = st.session_state.get("selected_fields", [])
         self.results: List[Dict[str, Any]] = st.session_state.get("results", [])
+
+        # Label configuration
+        self.label_type: Optional[str] = st.session_state.get("label_type", None)
+        self.label_column: Optional[str] = st.session_state.get("label_column", None)
+        self.text_columns: List[str] = st.session_state.get("text_columns", [])
 
     def run(self) -> None:
         """
@@ -97,6 +105,9 @@ class QualitativeAnalysisApp:
 
             # Step 7: Compare with External Judgments (optionally: alt-test or Cohen's Kappa)
             compare_with_external_judgments(self)
+
+            # Step 8: Run Analysis on Remaining Data
+            run_analysis(self, analyze_remaining=True)
 
 
 def main() -> None:

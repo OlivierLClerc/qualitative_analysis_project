@@ -53,15 +53,28 @@ def select_fields(app_instance: Any) -> List[str]:
             """
         )
 
+        # Get the default index for the label column
+        default_index = 0
+        if (
+            app_instance.label_column
+            and app_instance.label_column in app_instance.selected_fields
+        ):
+            default_index = app_instance.selected_fields.index(
+                app_instance.label_column
+            )
+        elif not app_instance.selected_fields:
+            default_index = None
+
         # Select the label column from the extracted fields
         label_column = st.selectbox(
             "Label Column:",
             options=app_instance.selected_fields,
-            index=0 if app_instance.selected_fields else None,
+            index=default_index,
             key="label_column_select",
         )
 
-        # Store in session state
+        # Store in session state and app instance
         st.session_state["label_column"] = label_column
+        app_instance.label_column = label_column
 
     return extracted

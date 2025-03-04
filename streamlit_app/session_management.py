@@ -45,9 +45,15 @@ def load_previous_session(app_instance: Any) -> None:
             app_instance.selected_model = session_data.get("selected_model", None)
             app_instance.annotation_columns = session_data.get("annotation_columns", [])
 
-            # Get label column and type
+            # Get label column, type, and text columns
             label_column = session_data.get("label_column", None)
             label_type = session_data.get("label_type", None)
+            text_columns = session_data.get("text_columns", [])
+
+            # Store in app instance
+            app_instance.label_column = label_column
+            app_instance.label_type = label_type
+            app_instance.text_columns = text_columns
 
             # Update session_state
             st.session_state["selected_columns"] = app_instance.selected_columns
@@ -60,6 +66,7 @@ def load_previous_session(app_instance: Any) -> None:
             st.session_state["annotation_columns"] = app_instance.annotation_columns
             st.session_state["label_column"] = label_column
             st.session_state["label_type"] = label_type
+            st.session_state["text_columns"] = text_columns
 
             st.success("✅ Previous session successfully loaded!")
 
@@ -101,8 +108,9 @@ def save_session(app_instance: Any) -> None:
         "selected_fields": app_instance.selected_fields,
         "selected_model": app_instance.selected_model,
         "annotation_columns": app_instance.annotation_columns,
-        "label_column": st.session_state.get("label_column", None),
-        "label_type": st.session_state.get("label_type", None),
+        "label_column": app_instance.label_column,
+        "label_type": app_instance.label_type,
+        "text_columns": app_instance.text_columns,
     }
 
     data_json = json.dumps(session_data, indent=4)

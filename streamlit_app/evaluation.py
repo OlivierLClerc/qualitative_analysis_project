@@ -11,14 +11,11 @@ from qualitative_analysis import compute_cohens_kappa, run_alt_test_general
 
 def compare_with_external_judgments(app_instance: Any) -> None:
     """
-    Step 7: Compare with External Judgments (Optional),
+    Step 7: Compare with External Judgments,
     now using annotation columns directly.
     Optionally compute Cohen's Kappa (pairwise) or run the Alternative Annotator Test.
-
-    Args:
-        app_instance: The QualitativeAnalysisApp instance
     """
-    st.header("Step 7: Compare with Annotation Columns (Optional)")
+    st.header("Step 7: Compare with Annotation Columns")
 
     if not app_instance.results:
         st.warning("No analysis results. Please run the analysis first.")
@@ -48,7 +45,7 @@ def compare_with_external_judgments(app_instance: Any) -> None:
             """
         )
 
-        # LLM columns are presumably the ones in selected_fields
+        # LLM columns presumably the ones in selected_fields
         llm_columns: list[str] = [
             col for col in app_instance.selected_fields if col in results_df.columns
         ]
@@ -57,9 +54,17 @@ def compare_with_external_judgments(app_instance: Any) -> None:
             st.warning("No LLM-generated columns found in the results to compare.")
             return
 
+        # Figure out a default index that points to our label column if possible
+        default_index = 0
+        if "label_column" in st.session_state:
+            label_col = st.session_state["label_column"]
+            if label_col in llm_columns:
+                default_index = llm_columns.index(label_col)
+
         llm_judgment_col: str = st.selectbox(
             "Select LLM Judgment Column:",
             llm_columns,
+            index=default_index,
             key="llm_judgment_col_select",
         )
 
@@ -107,6 +112,7 @@ def compare_with_external_judgments(app_instance: Any) -> None:
                 merged_aligned[annotation_col],
             )
             st.write(f"**Cohen's Kappa**: {kappa:.4f}")
+
     # --------------------------------------------------------------------------------
     # OPTION 2: ALT-TEST
     # --------------------------------------------------------------------------------
@@ -125,7 +131,6 @@ def compare_with_external_judgments(app_instance: Any) -> None:
             )
             return
 
-        # Which LLM column do we treat as 'model'?
         alt_test_llm_columns: list[str] = [
             col for col in app_instance.selected_fields if col in results_df.columns
         ]
@@ -133,13 +138,20 @@ def compare_with_external_judgments(app_instance: Any) -> None:
             st.warning("No valid LLM columns found in the results.")
             return
 
+        # Default to the label column if possible
+        default_model_index = 0
+        if "label_column" in st.session_state:
+            label_col = st.session_state["label_column"]
+            if label_col in alt_test_llm_columns:
+                default_model_index = alt_test_llm_columns.index(label_col)
+
         model_col: str = st.selectbox(
             "Choose model column for alt-test:",
             alt_test_llm_columns,
+            index=default_model_index,
             key="alt_test_model_col_select",
         )
 
-        # Choose metric
         metric_choice: str = st.selectbox(
             "Alignment Metric:",
             ["accuracy", "rmse"],
@@ -147,7 +159,6 @@ def compare_with_external_judgments(app_instance: Any) -> None:
             key="alt_test_metric_choice",
         )
 
-        # Epsilon and alpha
         epsilon_val: float = st.number_input(
             "Epsilon (cost-benefit margin)",
             min_value=0.0,
@@ -164,9 +175,6 @@ def compare_with_external_judgments(app_instance: Any) -> None:
             key="alt_test_alpha",
         )
 
-        # ----------------------------------------------------------------------------
-        # Alt-Test button
-        # ----------------------------------------------------------------------------
         if st.button("Run Alternative Annotator Test", key="run_alt_test_button"):
             try:
                 alt_results: dict[str, Any] = run_alt_test_general(

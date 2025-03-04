@@ -54,14 +54,37 @@ def select_rename_describe_columns(
 
     # Filter to keep only rows that have non-NA in these annotation columns
     if app_instance.annotation_columns:
-        data = data.dropna(subset=app_instance.annotation_columns)
+        # Store the original unfiltered data
+        app_instance.original_data = data.copy()
+        st.session_state["original_data"] = app_instance.original_data
+
+        # Count rows before filtering
+        total_rows = len(data)
+
+        # Filter data to keep only rows with annotations
+        filtered_data = data.dropna(subset=app_instance.annotation_columns)
+
+        # Count rows after filtering
+        filtered_rows = len(filtered_data)
+        filtered_out_rows = total_rows - filtered_rows
+
         st.write(
             f"**Filtered** dataset to remove rows without annotations in {app_instance.annotation_columns}."
         )
-        st.write(f"New dataset size: {data.shape[0]} rows.")
+        st.write(
+            f"Filtered dataset: {filtered_rows} rows kept (with annotations), {filtered_out_rows} rows filtered out (without annotations)."
+        )
+
+        # Update the data variable to use the filtered data
+        data = filtered_data
 
         # If annotation columns are selected, ask for the expected data type
-        st.subheader("Label Type Configuration")
+        st.markdown(
+            """
+            ### **Label Type Configuration**
+            """,
+            unsafe_allow_html=True,
+        )
         st.markdown(
             """
             Select the expected data type for your labels (both human annotations and LLM predictions).
@@ -69,16 +92,26 @@ def select_rename_describe_columns(
             """
         )
 
+        # Determine the default index for the label type
+        label_type_options = ["Integer", "Float", "Text"]
+        default_index = 0
+        if app_instance.label_type:
+            try:
+                default_index = label_type_options.index(app_instance.label_type)
+            except ValueError:
+                default_index = 0
+
         # Select the expected data type for the labels
         label_type = st.radio(
             "Expected Label Type:",
-            options=["Integer", "Float", "Text (str)"],
-            index=0,
+            options=label_type_options,
+            index=default_index,
             key="label_type_radio",
         )
 
-        # Store in session state
+        # Store in session state and app instance
         st.session_state["label_type"] = label_type
+        app_instance.label_type = label_type
 
     # Store final annotation columns in session
     st.session_state["annotation_columns"] = app_instance.annotation_columns
@@ -142,7 +175,8 @@ def select_rename_describe_columns(
 
     # 2.5: Cleaning & Normalizing text columns
     st.markdown(
-        """ 
+        """
+        ### **Normalization of Text Columns**
         Select which columns (among your selected ones) contain textual data to be cleaned & normalized.
         """,
         unsafe_allow_html=True,
@@ -153,12 +187,27 @@ def select_rename_describe_columns(
         columns=app_instance.column_renames
     )
 
+    # Get the default text columns from session state or app instance
+    default_text_cols = (
+        app_instance.text_columns
+        if app_instance.text_columns
+        else processed.columns.tolist()
+    )
+    # Filter out any columns that don't exist in the current processed dataframe
+    valid_default_text_cols = [
+        col for col in default_text_cols if col in processed.columns.tolist()
+    ]
+
     text_cols: List[str] = st.multiselect(
         "Text columns:",
         processed.columns.tolist(),
-        default=processed.columns.tolist(),
+        default=valid_default_text_cols,
         key="text_columns_selection",
     )
+
+    # Store text columns in session state and app instance
+    st.session_state["text_columns"] = text_cols
+    app_instance.text_columns = text_cols
 
     # Clean and sanitize
     for tcol in text_cols:
