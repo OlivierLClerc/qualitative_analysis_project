@@ -29,17 +29,19 @@ def filter_annotations(
     """
     st.header("Step 2: (Optional) Filter by Existing Annotation Columns")
 
-    # Initialize the session state key to an empty list if it doesn't exist
-    if "selected_annotation_cols" not in st.session_state:
-        st.session_state["selected_annotation_cols"] = []
+    # Get previously selected columns from session state or use empty list as default
+    previous_selection = st.session_state.get("selected_annotation_cols", [])
 
-    # Create the multiselect with an empty default (if nothing has been selected yet)
+    # Ensure that the previously selected columns still exist in the dataframe
+    valid_default_cols = [col for col in previous_selection if col in df.columns]
+
+    # Create the multiselect with the valid default columns
     selected_annotation_cols: List[str] = st.multiselect(
         label="Select column(s) that contain existing human annotations:",
         options=df.columns,
-        default=st.session_state["selected_annotation_cols"],
+        default=valid_default_cols,
         help="Only rows with non-null values in ALL selected columns will be shown during annotation.",
-        key="annotation_cols_key",
+        key="selected_annotation_cols",  # Use this key to auto-manage state
     )
 
     # Initialize counters

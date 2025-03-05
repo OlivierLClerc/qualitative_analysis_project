@@ -19,6 +19,30 @@ def get_translator():
     return pipeline("translation_fr_to_en", model="Helsinki-NLP/opus-mt-fr-en")
 
 
+def is_valid_annotated_row(
+    df: pd.DataFrame, idx: int, annotation_cols: List[str]
+) -> bool:
+    """
+    Check if a row has non-null values in all of the selected annotation columns.
+
+    Args:
+        df: The DataFrame to check
+        idx: The index of the row to check
+        annotation_cols: List of column names that contain annotations
+
+    Returns:
+        True if the row has non-null values in all of the selected annotation columns, False otherwise
+    """
+    if not annotation_cols:
+        return True
+
+    for col in annotation_cols:
+        if pd.isna(df.at[idx, col]):
+            return False
+
+    return True
+
+
 def annotate_rows(
     df: pd.DataFrame,
     current_index: int,
@@ -59,12 +83,11 @@ def annotate_rows(
     # Get annotated indices if available
     annotated_indices = st.session_state.get("annotated_indices", [])
 
+    # Get selected annotation columns
+    selected_annotation_cols = st.session_state.get("selected_annotation_cols", [])
+
     # If we have annotation columns and annotated indices, use them to navigate
-    if (
-        annotated_indices
-        and "selected_annotation_cols" in st.session_state
-        and st.session_state["selected_annotation_cols"]
-    ):
+    if annotated_indices and selected_annotation_cols:
         # Convert current_index to actual dataframe index if we're using annotated indices
         if current_index >= len(annotated_indices):
             current_index = len(annotated_indices) - 1
@@ -77,6 +100,14 @@ def annotate_rows(
             idx = annotated_indices[current_index]
         else:
             idx = 0
+
+        # Verify that the row has non-null values in all selected annotation columns
+        if not is_valid_annotated_row(df, idx, selected_annotation_cols):
+            # This shouldn't happen if the annotated_indices are correct, but just in case
+            st.warning(
+                f"Row {idx} does not have values in all selected annotation columns. "
+                f"This may indicate an issue with the filtering."
+            )
 
         st.info(
             f"Showing annotated row {current_index + 1} of {len(annotated_indices)}"
@@ -150,12 +181,25 @@ def annotate_rows(
             if st.session_state.fast_label != "":
                 df.at[idx, new_col_name] = st.session_state.fast_label
             st.session_state.fast_label = ""
-            if annotated_indices and st.session_state.get(
-                "selected_annotation_cols", []
-            ):
-                current_index = max(0, current_index - 1)
+
+            if annotated_indices and selected_annotation_cols:
+                # Find the previous valid index
+                new_index = current_index - 1
+                while new_index >= 0:
+                    candidate_idx = annotated_indices[new_index]
+                    if is_valid_annotated_row(
+                        df, candidate_idx, selected_annotation_cols
+                    ):
+                        current_index = new_index
+                        break
+                    new_index -= 1
+
+                # If no valid index found, stay at the current index
+                if new_index < 0:
+                    current_index = max(0, current_index)
             else:
                 current_index = max(0, current_index - 1)
+
             st.session_state.current_index = current_index
             st.rerun()
 
@@ -164,12 +208,25 @@ def annotate_rows(
             if st.session_state.fast_label != "":
                 df.at[idx, new_col_name] = st.session_state.fast_label
             st.session_state.fast_label = ""
-            if annotated_indices and st.session_state.get(
-                "selected_annotation_cols", []
-            ):
-                current_index = min(len(annotated_indices) - 1, current_index + 1)
+
+            if annotated_indices and selected_annotation_cols:
+                # Find the next valid index
+                new_index = current_index + 1
+                while new_index < len(annotated_indices):
+                    candidate_idx = annotated_indices[new_index]
+                    if is_valid_annotated_row(
+                        df, candidate_idx, selected_annotation_cols
+                    ):
+                        current_index = new_index
+                        break
+                    new_index += 1
+
+                # If no valid index found, stay at the current index
+                if new_index >= len(annotated_indices):
+                    current_index = min(len(annotated_indices) - 1, current_index)
             else:
                 current_index = min(len(df) - 1, current_index + 1)
+
             st.session_state.current_index = current_index
             st.rerun()
 
@@ -179,12 +236,14 @@ def annotate_rows(
                 df.at[idx, new_col_name] = st.session_state.fast_label
             st.session_state.fast_label = ""
             found = False
-            if annotated_indices and st.session_state.get(
-                "selected_annotation_cols", []
-            ):
+
+            if annotated_indices and selected_annotation_cols:
                 for offset in range(current_index + 1, len(annotated_indices)):
                     candidate_idx = annotated_indices[offset]
-                    if pd.isna(df.at[candidate_idx, new_col_name]):
+                    # Check if the row is valid and unrated
+                    if is_valid_annotated_row(
+                        df, candidate_idx, selected_annotation_cols
+                    ) and pd.isna(df.at[candidate_idx, new_col_name]):
                         current_index = offset
                         found = True
                         break
@@ -194,6 +253,7 @@ def annotate_rows(
                         current_index = i
                         found = True
                         break
+
             if found:
                 st.session_state.current_index = current_index
                 st.rerun()
@@ -206,12 +266,25 @@ def annotate_rows(
             if st.session_state.fast_label != "":
                 df.at[idx, new_col_name] = st.session_state.fast_label
             st.session_state.fast_label = ""
-            if annotated_indices and st.session_state.get(
-                "selected_annotation_cols", []
-            ):
-                current_index = min(len(annotated_indices) - 1, current_index + 1)
+
+            if annotated_indices and selected_annotation_cols:
+                # Find the next valid index
+                new_index = current_index + 1
+                while new_index < len(annotated_indices):
+                    candidate_idx = annotated_indices[new_index]
+                    if is_valid_annotated_row(
+                        df, candidate_idx, selected_annotation_cols
+                    ):
+                        current_index = new_index
+                        break
+                    new_index += 1
+
+                # If no valid index found, stay at the current index
+                if new_index >= len(annotated_indices):
+                    current_index = min(len(annotated_indices) - 1, current_index)
             else:
                 current_index = min(len(df) - 1, current_index + 1)
+
             st.session_state.current_index = current_index
             st.rerun()
 
