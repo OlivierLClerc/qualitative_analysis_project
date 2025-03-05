@@ -288,4 +288,15 @@ def annotate_rows(
             st.session_state.current_index = current_index
             st.rerun()
 
+    # Fast Label (below data)
+    fast_labels = [
+        label.strip() for label in fast_labels_text.split(",") if label.strip()
+    ]
+    if fast_labels:
+        selected_fast_label = st.radio(
+            "Select a Label:", options=[""] + fast_labels, key="fast_label"
+        )
+        if selected_fast_label:
+            st.markdown(f"**Current Label:** {selected_fast_label}")
+
     return df, current_index, fast_label, translated_rows
