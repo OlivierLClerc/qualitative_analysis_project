@@ -35,52 +35,48 @@ def filter_annotations(
         options=df.columns,
         default=st.session_state.get("selected_annotation_cols", []),
         help="Only rows with non-null values in ALL selected columns will be shown during annotation.",
-        key="annotation_cols_key",  # Unique key
+        key="annotation_cols_key",  # This key ensures Streamlit “remembers” the selection
     )
 
-    # Update our session state copy of the selection
+    # Keep the selection in session state
     st.session_state["selected_annotation_cols"] = selected_annotation_cols
 
-    # Initialize variables
-    annotated_indices = []
+    # Initialize counters
+    total_count = len(df)
     annotated_count = 0
     unannotated_count = 0
-    total_count = len(df)
+    annotated_indices = []
 
-    # Identify annotated rows if annotation columns are selected
+    # Only calculate these if columns are chosen
     if selected_annotation_cols:
-        # Get indices of rows WITH annotations
+        # Identify rows that have non-null values in all of the selected columns
         annotated_mask = df[selected_annotation_cols].notna().all(axis=1)
         annotated_indices = df[annotated_mask].index.tolist()
 
-        # Calculate counts
         annotated_count = len(annotated_indices)
         unannotated_count = total_count - annotated_count
 
-        # Store in session state
-        st.session_state.annotated_indices = annotated_indices
-        st.session_state.annotated_count = annotated_count
-        st.session_state.unannotated_count = unannotated_count
-        st.session_state.total_count = total_count
+        # Store in session state (if needed later)
+        st.session_state["annotated_indices"] = annotated_indices
+        st.session_state["annotated_count"] = annotated_count
+        st.session_state["unannotated_count"] = unannotated_count
+        st.session_state["total_count"] = total_count
 
-        st.success(
-            f"Identified {annotated_count} rows with non-null values in {', '.join(selected_annotation_cols)}. "
-            f"These rows will be shown during annotation. "
-            f"{unannotated_count} more unannotated rows will be included in final download."
-        )
-
+        # Show feedback
         if annotated_count == 0:
-            st.warning("No rows with annotations found! Please adjust your filters.")
-            st.stop()
-            return df, selected_annotation_cols, 0, 0, 0
+            # Show a warning instead of stopping, so user can keep adjusting columns
+            st.warning(
+                f"No rows have annotations in **all** of these columns: "
+                f"{', '.join(selected_annotation_cols)}. "
+                "Please adjust your selection."
+            )
+        else:
+            st.success(
+                f"Identified {annotated_count} rows with non-null values in "
+                f"{', '.join(selected_annotation_cols)}. "
+                f"These will be shown during annotation. "
+                f"{unannotated_count} rows remain unannotated."
+            )
 
-        return (
-            df,
-            selected_annotation_cols,
-            annotated_count,
-            unannotated_count,
-            total_count,
-        )
-
-    # If no annotation columns selected, all rows are considered "annotated" for display purposes
-    return df, selected_annotation_cols, total_count, 0, total_count
+    # If no columns selected, or zero matches, we still return everything so the app doesn't break
+    return df, selected_annotation_cols, annotated_count, unannotated_count, total_count

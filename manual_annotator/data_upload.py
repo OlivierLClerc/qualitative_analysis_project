@@ -13,8 +13,8 @@ def upload_dataset(
     current_df: Optional[pd.DataFrame], original_df: Optional[pd.DataFrame]
 ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """
-    Step 1: Upload CSV Dataset
-    Uploads a dataset (CSV) via Streamlit's file uploader.
+    Step 1: Upload CSV or XLSX Dataset
+    Uploads a dataset (CSV/XLSX) via Streamlit's file uploader.
 
     Args:
         current_df: The current DataFrame or None
@@ -23,17 +23,26 @@ def upload_dataset(
     Returns:
         A tuple containing (current_df, original_df)
     """
-    st.header("Step 1: Upload Your Data (CSV)")
+    st.header("Step 1: Upload Your Data (CSV or XLSX)")
 
-    uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="data_file")
+    uploaded_file = st.file_uploader(
+        "Upload CSV or XLSX File", type=["csv", "xlsx"], key="data_file"
+    )
 
     if uploaded_file is not None and current_df is None:
-        # Load data via your custom function from qualitative_analysis
-        loaded_df = load_data(
-            uploaded_file, file_type="csv", delimiter=";"
-        ).reset_index(drop=True)
+        file_name = uploaded_file.name.lower()
+        if file_name.endswith(".csv"):
+            file_type = "csv"
+            delimiter = st.text_input("CSV Delimiter", value=";")
+            loaded_df = load_data(
+                uploaded_file, file_type=file_type, delimiter=delimiter
+            ).reset_index(drop=True)
+        else:
+            file_type = "xlsx"
+            loaded_df = load_data(uploaded_file, file_type=file_type).reset_index(
+                drop=True
+            )
 
-        # Store in session state
         current_df = loaded_df.copy()
         original_df = loaded_df.copy()
 
@@ -46,7 +55,6 @@ def upload_dataset(
         st.stop()
         return None, None
 
-    # Show a preview of the data
     st.write("Here are the first 5 rows of your data:")
     st.dataframe(current_df.head())
 
