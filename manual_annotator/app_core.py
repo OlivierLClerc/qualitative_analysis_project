@@ -75,7 +75,7 @@ class ManualAnnotatorApp:
             **Unvalid** rows can be flagged (it will create a new column for each annotator).
 
             **Steps**  
-            1. **Upload Data** (CSV)  
+            1. **Upload Data** (CSV or XLSX)  
             2. **Optionally Filter** rows based on existing annotation columns  
             3. **Set Annotator Name** (creates a new column for your annotations)  
             4. **Upload Codebook** (TXT) to display instructions on the sidebar (optional)  
