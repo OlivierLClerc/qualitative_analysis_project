@@ -29,17 +29,18 @@ def filter_annotations(
     """
     st.header("Step 2: (Optional) Filter by Existing Annotation Columns")
 
-    # Use a stable key for the multiselect, and provide a default from session state
+    # Initialize the session state key to an empty list if it doesn't exist
+    if "selected_annotation_cols" not in st.session_state:
+        st.session_state["selected_annotation_cols"] = []
+
+    # Create the multiselect with an empty default (if nothing has been selected yet)
     selected_annotation_cols: List[str] = st.multiselect(
         label="Select column(s) that contain existing human annotations:",
         options=df.columns,
-        default=st.session_state.get("selected_annotation_cols", []),
+        default=st.session_state["selected_annotation_cols"],
         help="Only rows with non-null values in ALL selected columns will be shown during annotation.",
-        key="annotation_cols_key",  # This key ensures Streamlit “remembers” the selection
+        key="annotation_cols_key",
     )
-
-    # Keep the selection in session state
-    st.session_state["selected_annotation_cols"] = selected_annotation_cols
 
     # Initialize counters
     total_count = len(df)

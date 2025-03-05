@@ -52,6 +52,10 @@ def annotate_rows(
     """
     st.header("Step 7: Annotate Rows")
 
+    # Initialize fast_label in session state if not present
+    if "fast_label" not in st.session_state:
+        st.session_state.fast_label = fast_label
+
     # Get annotated indices if available
     annotated_indices = st.session_state.get("annotated_indices", [])
 
@@ -96,6 +100,12 @@ def annotate_rows(
 
     # Show existing rating & flagged status
     rating_val = df.at[idx, new_col_name]
+    if (
+        pd.notna(rating_val)
+        and isinstance(rating_val, float)
+        and rating_val.is_integer()
+    ):
+        rating_val = int(rating_val)
     flagged_val = df.at[idx, flag_col] if flag_col in df.columns else None
 
     st.markdown(f"**Row Index:** {idx}")
@@ -105,12 +115,9 @@ def annotate_rows(
     # Display the selected columns
     for col in selected_columns:
         val = df.at[idx, col]
-
         if pd.notna(val):
-            # If it's a float and has no decimal part, convert to int for display
             if isinstance(val, float) and val.is_integer():
                 val = int(val)
-
         st.write(f"**{col}:** {val}")
 
     # Translation (optional)
@@ -128,36 +135,27 @@ def annotate_rows(
                     st.error(f"Error translating '{col}': {e}")
                     translation_dict[col] = "[Error]"
             translated_rows[idx] = translation_dict
-
-            # Update session state
             st.session_state.translated_rows = translated_rows
 
-        # Display the stored translation
         translations = translated_rows[idx]
         st.markdown("### Translated Content:")
         for col, tval in translations.items():
             st.write(f"**{col}:** {tval}")
 
     # Navigation Buttons
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
 
     with c1:
         if st.button("Previous"):
-            # Apply the currently selected fast label if any
             if st.session_state.fast_label != "":
                 df.at[idx, new_col_name] = st.session_state.fast_label
-
-            # Reset the fast label in session state
             st.session_state.fast_label = ""
-
-            # Handle navigation (with annotated indices if applicable)
             if annotated_indices and st.session_state.get(
                 "selected_annotation_cols", []
             ):
                 current_index = max(0, current_index - 1)
             else:
                 current_index = max(0, current_index - 1)
-
             st.session_state.current_index = current_index
             st.rerun()
 
@@ -176,6 +174,33 @@ def annotate_rows(
             st.rerun()
 
     with c3:
+        if st.button("Next unrated"):
+            if st.session_state.fast_label != "":
+                df.at[idx, new_col_name] = st.session_state.fast_label
+            st.session_state.fast_label = ""
+            found = False
+            if annotated_indices and st.session_state.get(
+                "selected_annotation_cols", []
+            ):
+                for offset in range(current_index + 1, len(annotated_indices)):
+                    candidate_idx = annotated_indices[offset]
+                    if pd.isna(df.at[candidate_idx, new_col_name]):
+                        current_index = offset
+                        found = True
+                        break
+            else:
+                for i in range(current_index + 1, len(df)):
+                    if pd.isna(df.at[i, new_col_name]):
+                        current_index = i
+                        found = True
+                        break
+            if found:
+                st.session_state.current_index = current_index
+                st.rerun()
+            else:
+                st.warning("No unrated rows found.")
+
+    with c4:
         if st.button("Unvalid data"):
             df.at[idx, flag_col] = True
             if st.session_state.fast_label != "":
@@ -189,16 +214,5 @@ def annotate_rows(
                 current_index = min(len(df) - 1, current_index + 1)
             st.session_state.current_index = current_index
             st.rerun()
-
-    # Fast Label (below data)
-    fast_labels = [
-        label.strip() for label in fast_labels_text.split(",") if label.strip()
-    ]
-    if fast_labels:
-        selected_fast_label = st.radio(
-            "Select a Label:", options=[""] + fast_labels, key="fast_label"
-        )
-        if selected_fast_label:
-            st.markdown(f"**Current Label:** {selected_fast_label}")
 
     return df, current_index, fast_label, translated_rows
