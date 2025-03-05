@@ -42,7 +42,7 @@ def setup_annotator(
     )
 
     st.markdown(
-        "A new column will be created for your annotations if it doesn't exist."
+        "A new column will be created for your annotations if it doesn't exist (the column will be created as Rater_YourName)."
     )
 
     if annotator:
