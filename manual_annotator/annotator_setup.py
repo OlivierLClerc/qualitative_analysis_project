@@ -54,7 +54,7 @@ def setup_annotator(
         if st.button("Confirm Annotator Name"):
             if annotator_name:
                 candidate_col = f"Rater_{annotator_name}"
-                flag_col = f"Unvalid_{annotator_name}"
+                flag_col = f"Invalid_{annotator_name}"
                 if candidate_col not in df.columns:
                     df[candidate_col] = pd.NA
                 if flag_col not in df.columns:

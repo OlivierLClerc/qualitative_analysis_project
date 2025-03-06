@@ -19,10 +19,18 @@ def define_labels(fast_labels_text: str) -> str:
     st.header("Step 5: Define Labels")
 
     st.markdown(
-        "Define the possible labels of annotations that you can apply. "
-        "Simply type them in a comma-separated list."
+        """
+        Define the possible labels of annotations that you can apply. 
+
+        For example, if you are annotating text and are interested in sentiment analysis, 
+        you might use labels like 'positive', 'negative', and 'neutral'. 
+        The labels will be used to create buttons for annotating the data. 
+        
+        Simply type your different labels in a comma-separated list (e.g. 'positive, negative, neutral').
+        """
     )
 
+    # Text input for labels
     updated_labels = st.text_input(
         "Labels (comma-separated):",
         value=fast_labels_text,
@@ -30,7 +38,8 @@ def define_labels(fast_labels_text: str) -> str:
         placeholder="e.g. 0, 1, or cat, dog, etc.",
     )
 
-    # Don't update session state here - Streamlit does this automatically
-    # when using the key parameter
+    # Button to confirm label application
+    if st.button("Apply Labels"):
+        st.success("Labels applied successfully!")
 
     return updated_labels

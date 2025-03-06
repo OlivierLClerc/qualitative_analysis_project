@@ -50,6 +50,8 @@ class ManualAnnotatorApp:
         # UI-related state
         self.current_index: int = st.session_state.get("current_index", 0)
         self.selected_columns: List[str] = st.session_state.get("selected_columns", [])
+        self.sort_column: Optional[str] = st.session_state.get("sort_column", None)
+        self.enable_sorting: bool = st.session_state.get("enable_sorting", False)
         self.translated_rows: Dict[int, Dict[str, str]] = st.session_state.get(
             "translated_rows", {}
         )
@@ -72,7 +74,7 @@ class ManualAnnotatorApp:
             Your dataset should be in CSV format, and each row should correspond to a single item to be annotated.
             You will be able to load your codebook (instructions) and define the labels you want to use.
             The tool will guide you through each row, allowing you to annotate them one by one.
-            **Unvalid** rows can be flagged (it will create a new column for each annotator).
+            **Invalid** rows can be flagged (it will create a new column for each annotator).
 
             **Steps**  
             1. **Upload Data** (CSV or XLSX)  
@@ -124,7 +126,7 @@ class ManualAnnotatorApp:
         self.fast_labels_text = define_labels(self.fast_labels_text)
 
         # Step 6: Select Columns to Display
-        self.selected_columns = select_columns(
+        self.selected_columns, self.sort_column, self.enable_sorting = select_columns(
             self.df, self.new_col_name, self.annotator_name
         )
 
@@ -142,6 +144,8 @@ class ManualAnnotatorApp:
                 self.fast_labels_text,
                 self.fast_label,
                 self.translated_rows,
+                self.sort_column,
+                self.enable_sorting,
             )
         )
 
