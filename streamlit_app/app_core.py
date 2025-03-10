@@ -77,29 +77,27 @@ class QualitativeAnalysisApp:
         # Step 1: Upload Dataset
         self.data = upload_dataset(self, st.session_state)
 
-        # Steps 2-7 are only relevant if data is uploaded
-        if self.data is not None:
-            # Step 2: Select & Rename Columns, Add Descriptions, plus annotation filtering
-            self.processed_data = select_rename_describe_columns(self, self.data)
+        # Step 2: Select & Rename Columns, Add Descriptions, plus annotation filtering
+        self.processed_data = select_rename_describe_columns(self, self.data)
 
-            # Step 3: Codebook & Examples
-            self.codebook, self.examples = codebook_and_examples(self)
+        # Step 3: Codebook & Examples
+        self.codebook, self.examples = codebook_and_examples(self)
 
-            # Step 4: Fields to Extract
-            self.selected_fields = select_fields(self)
+        # Step 4: Fields to Extract
+        self.selected_fields = select_fields(self)
 
-            # Step 5: Configure LLM (provider & model)
-            self.llm_client = configure_llm(self)
+        # Step 5: Configure LLM (provider & model)
+        self.llm_client = configure_llm(self)
 
-            # Step 6: Run Analysis
-            # results_df = run_analysis(self)
-            run_analysis(self)
+        # Step 6: Run Analysis
+        # results_df = run_analysis(self)
+        run_analysis(self)
 
-            # Step 7: Compare with External Judgments (optionally: alt-test or Cohen's Kappa)
-            compare_with_external_judgments(self)
+        # Step 7: Compare with External Judgments (optionally: alt-test or Cohen's Kappa)
+        compare_with_external_judgments(self)
 
-            # Step 8: Run Analysis on Remaining Data
-            run_analysis(self, analyze_remaining=True)
+        # Step 8: Run Analysis on Remaining Data
+        run_analysis(self, analyze_remaining=True)
 
 
 def main() -> None:
