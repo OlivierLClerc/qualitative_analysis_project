@@ -27,223 +27,223 @@ def select_rename_describe_columns(
     Returns:
         The processed DataFrame or None if no data was provided
     """
-    st.header("Step 2: Column Selections (Annotation Columns + Data Columns)")
+    st.markdown("### Step 2: Data Selection", unsafe_allow_html=True)
+    with st.expander("Show/hide details of step 2", expanded=True):
+        if data is None:
+            st.error("No dataset loaded.")
+            return None
 
-    if data is None:
-        st.error("No dataset loaded.")
-        return None
+        columns = data.columns.tolist()
 
-    columns = data.columns.tolist()
-
-    # 2.1: Let user pick the annotation columns
-    st.markdown(
-        """
-        Select column(s) that contain *human annotations*.
-        Rows missing those annotations will be filtered out
-        so that the dataset in the first part of the analysis only includes fully annotated entries.
-        """,
-        unsafe_allow_html=True,
-    )
-
-    app_instance.annotation_columns = st.multiselect(
-        "Annotation Column(s):",
-        options=columns,
-        default=st.session_state.get("annotation_columns", []),
-        key="annotation_columns_selection",
-    )
-
-    # Filter to keep only rows that have non-NA in these annotation columns
-    if app_instance.annotation_columns:
-        # Store the original unfiltered data
-        app_instance.original_data = data.copy()
-        st.session_state["original_data"] = app_instance.original_data
-
-        # Count rows before filtering
-        total_rows = len(data)
-
-        # Filter data to keep only rows with annotations
-        filtered_data = data.dropna(subset=app_instance.annotation_columns)
-
-        # Count rows after filtering
-        filtered_rows = len(filtered_data)
-        filtered_out_rows = total_rows - filtered_rows
-
-        st.write(
-            f"**Filtered** dataset to remove rows without annotations in {app_instance.annotation_columns}."
-        )
-        st.write(
-            f"Filtered dataset: {filtered_rows} rows kept (with annotations), {filtered_out_rows} rows filtered out (without annotations)."
-        )
-
-        # Update the data variable to use the filtered data
-        data = filtered_data
-
-        # If annotation columns are selected, ask for the expected data type
+        # 2.1: Let user pick the annotation columns
         st.markdown(
             """
-            ### **Label Type Configuration**
+            Select column(s) that contain *human annotations*.
+            Rows missing those annotations will be filtered out
+            so that the dataset in the first part of the analysis only includes fully annotated entries.
             """,
             unsafe_allow_html=True,
         )
-        st.markdown(
-            """
-            Select the expected data type for your labels (both human annotations and LLM predictions).
-            This helps ensure consistent data types for evaluation.
-            """
+
+        app_instance.annotation_columns = st.multiselect(
+            "Annotation Column(s):",
+            options=columns,
+            default=st.session_state.get("annotation_columns", []),
+            key="annotation_columns_selection",
         )
 
-        # Determine the default index for the label type
-        label_type_options = ["Integer", "Float", "Text"]
-        default_index = 0
-        if app_instance.label_type:
-            try:
-                default_index = label_type_options.index(app_instance.label_type)
-            except ValueError:
-                default_index = 0
+        # Filter to keep only rows that have non-NA in these annotation columns
+        if app_instance.annotation_columns:
+            # Store the original unfiltered data
+            app_instance.original_data = data.copy()
+            st.session_state["original_data"] = app_instance.original_data
 
-        # Select the expected data type for the labels
-        label_type = st.radio(
-            "Expected Label Type:",
-            options=label_type_options,
-            index=default_index,
-            key="label_type_radio",
-        )
+            # Count rows before filtering
+            total_rows = len(data)
 
-        # Store in session state and app instance
-        st.session_state["label_type"] = label_type
-        app_instance.label_type = label_type
+            # Filter data to keep only rows with annotations
+            filtered_data = data.dropna(subset=app_instance.annotation_columns)
 
-    # Store final annotation columns in session
-    st.session_state["annotation_columns"] = app_instance.annotation_columns
+            # Count rows after filtering
+            filtered_rows = len(filtered_data)
+            filtered_out_rows = total_rows - filtered_rows
 
-    # 2.2: Select the columns that will be analyzed (exclude annotation columns)
-    columns_for_analysis = [
-        c for c in data.columns if c not in app_instance.annotation_columns
-    ]
-
-    st.markdown(
-        """
-        Now, select the *analysis columns* (the columns you want the LLM to process).
-        You should generally *exclude* your annotation columns here.
-        """,
-        unsafe_allow_html=True,
-    )
-
-    previous_selection = st.session_state.get("selected_columns", [])
-    # Filter out invalid columns
-    valid_previous_selection = [
-        col for col in previous_selection if col in columns_for_analysis
-    ]
-
-    app_instance.selected_columns = st.multiselect(
-        "Columns to analyze:",
-        options=columns_for_analysis,
-        default=(
-            valid_previous_selection
-            if valid_previous_selection
-            else columns_for_analysis
-        ),
-    )
-    st.session_state["selected_columns"] = app_instance.selected_columns
-
-    if not app_instance.selected_columns:
-        st.info("Select at least one column to proceed.")
-        return None
-
-    # 2.3: Rename columns
-    # First, create a new column_renames dictionary that only includes selected columns
-    filtered_column_renames = {}
-    for col in app_instance.selected_columns:
-        default_rename = app_instance.column_renames.get(col, col)
-        new_name = st.text_input(
-            f"Rename '{col}' to:", value=default_rename, key=f"rename_{col}"
-        )
-        filtered_column_renames[col] = new_name
-
-    # Update app_instance.column_renames to only include selected columns
-    app_instance.column_renames = filtered_column_renames
-    st.session_state["column_renames"] = app_instance.column_renames
-
-    # 2.4: Descriptions
-    st.write("Add a short description for each selected column:")
-    for col in app_instance.selected_columns:
-        renamed_col = app_instance.column_renames[col]
-        default_desc = app_instance.column_descriptions.get(renamed_col, "")
-        desc = st.text_area(
-            f"Description for '{renamed_col}':",
-            height=70,
-            value=default_desc,
-            key=f"desc_{renamed_col}",
-        )
-        app_instance.column_descriptions[renamed_col] = desc
-    st.session_state["column_descriptions"] = app_instance.column_descriptions
-
-    # 2.5: Cleaning & Normalizing text columns
-    st.markdown(
-        """
-        ### **Normalization of Text Columns**
-        Select which columns (among your selected ones) contain textual data to be cleaned & normalized.
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Build a DataFrame with only the selected columns (renamed)
-    processed = data[app_instance.selected_columns].rename(
-        columns=app_instance.column_renames
-    )
-
-    # Get the default text columns from session state or app instance
-    default_text_cols = (
-        app_instance.text_columns
-        if app_instance.text_columns
-        else processed.columns.tolist()
-    )
-    # Filter out any columns that don't exist in the current processed dataframe
-    valid_default_text_cols = [
-        col for col in default_text_cols if col in processed.columns.tolist()
-    ]
-
-    text_cols: List[str] = st.multiselect(
-        "Text columns:",
-        processed.columns.tolist(),
-        default=valid_default_text_cols,
-        key="text_columns_selection",
-    )
-
-    # Store text columns in session state and app instance
-    st.session_state["text_columns"] = text_cols
-    app_instance.text_columns = text_cols
-
-    # Clean and sanitize
-    for tcol in text_cols:
-        processed[tcol] = clean_and_normalize(processed[tcol])
-    processed = sanitize_dataframe(processed)
-
-    # Keep the annotation columns in the processed data, so we can do Step 7 easily
-    for ann_col in app_instance.annotation_columns:
-        if ann_col not in processed.columns:
-            processed[ann_col] = data[ann_col]
-
-    # Store processed data
-    app_instance.processed_data = processed
-    st.session_state["processed_data"] = processed
-
-    # Rebuild column_descriptions so it only includes the newly renamed analysis columns
-    updated_column_descriptions: Dict[str, str] = {}
-    renamed_values = list(app_instance.column_renames.values())
-
-    for col in processed.columns:
-        # Only include columns that are renamed values of selected columns
-        if col in renamed_values:
-            updated_column_descriptions[col] = app_instance.column_descriptions.get(
-                col, ""
+            st.write(
+                f"**Filtered** dataset to remove rows without annotations in {app_instance.annotation_columns}."
+            )
+            st.write(
+                f"Filtered dataset: {filtered_rows} rows kept (with annotations), {filtered_out_rows} rows filtered out (without annotations)."
             )
 
-    app_instance.column_descriptions = updated_column_descriptions
-    st.session_state["column_descriptions"] = app_instance.column_descriptions
+            # Update the data variable to use the filtered data
+            data = filtered_data
 
-    st.success("Columns processed successfully!")
-    st.write("Processed Data Preview:")
-    st.dataframe(processed.head())
+            # If annotation columns are selected, ask for the expected data type
+            st.markdown(
+                """
+                ### **Label Type Configuration**
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                """
+                Select the expected data type for your labels (both human annotations and LLM predictions).
+                This helps ensure consistent data types for evaluation.
+                """
+            )
+
+            # Determine the default index for the label type
+            label_type_options = ["Integer", "Float", "Text"]
+            default_index = 0
+            if app_instance.label_type:
+                try:
+                    default_index = label_type_options.index(app_instance.label_type)
+                except ValueError:
+                    default_index = 0
+
+            # Select the expected data type for the labels
+            label_type = st.radio(
+                "Expected Label Type:",
+                options=label_type_options,
+                index=default_index,
+                key="label_type_radio",
+            )
+
+            # Store in session state and app instance
+            st.session_state["label_type"] = label_type
+            app_instance.label_type = label_type
+
+        # Store final annotation columns in session
+        st.session_state["annotation_columns"] = app_instance.annotation_columns
+
+        # 2.2: Select the columns that will be analyzed (exclude annotation columns)
+        columns_for_analysis = [
+            c for c in data.columns if c not in app_instance.annotation_columns
+        ]
+
+        st.markdown(
+            """
+            Now, select the *analysis columns* (the columns you want the LLM to process).
+            You should generally *exclude* your annotation columns here.
+            """,
+            unsafe_allow_html=True,
+        )
+
+        previous_selection = st.session_state.get("selected_columns", [])
+        # Filter out invalid columns
+        valid_previous_selection = [
+            col for col in previous_selection if col in columns_for_analysis
+        ]
+
+        app_instance.selected_columns = st.multiselect(
+            "Columns to analyze:",
+            options=columns_for_analysis,
+            default=(
+                valid_previous_selection
+                if valid_previous_selection
+                else columns_for_analysis
+            ),
+        )
+        st.session_state["selected_columns"] = app_instance.selected_columns
+
+        if not app_instance.selected_columns:
+            st.info("Select at least one column to proceed.")
+            return None
+
+        # 2.3: Rename columns
+        # First, create a new column_renames dictionary that only includes selected columns
+        filtered_column_renames = {}
+        for col in app_instance.selected_columns:
+            default_rename = app_instance.column_renames.get(col, col)
+            new_name = st.text_input(
+                f"Rename '{col}' to:", value=default_rename, key=f"rename_{col}"
+            )
+            filtered_column_renames[col] = new_name
+
+        # Update app_instance.column_renames to only include selected columns
+        app_instance.column_renames = filtered_column_renames
+        st.session_state["column_renames"] = app_instance.column_renames
+
+        # 2.4: Descriptions
+        st.write("Add a short description for each selected column:")
+        for col in app_instance.selected_columns:
+            renamed_col = app_instance.column_renames[col]
+            default_desc = app_instance.column_descriptions.get(renamed_col, "")
+            desc = st.text_area(
+                f"Description for '{renamed_col}':",
+                height=70,
+                value=default_desc,
+                key=f"desc_{renamed_col}",
+            )
+            app_instance.column_descriptions[renamed_col] = desc
+        st.session_state["column_descriptions"] = app_instance.column_descriptions
+
+        # 2.5: Cleaning & Normalizing text columns
+        st.markdown(
+            """
+            ### **Normalization of Text Columns**
+            Select which columns (among your selected ones) contain textual data to be cleaned & normalized.
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Build a DataFrame with only the selected columns (renamed)
+        processed = data[app_instance.selected_columns].rename(
+            columns=app_instance.column_renames
+        )
+
+        # Get the default text columns from session state or app instance
+        default_text_cols = (
+            app_instance.text_columns
+            if app_instance.text_columns
+            else processed.columns.tolist()
+        )
+        # Filter out any columns that don't exist in the current processed dataframe
+        valid_default_text_cols = [
+            col for col in default_text_cols if col in processed.columns.tolist()
+        ]
+
+        text_cols: List[str] = st.multiselect(
+            "Text columns:",
+            processed.columns.tolist(),
+            default=valid_default_text_cols,
+            key="text_columns_selection",
+        )
+
+        # Store text columns in session state and app instance
+        st.session_state["text_columns"] = text_cols
+        app_instance.text_columns = text_cols
+
+        # Clean and sanitize
+        for tcol in text_cols:
+            processed[tcol] = clean_and_normalize(processed[tcol])
+        processed = sanitize_dataframe(processed)
+
+        # Keep the annotation columns in the processed data, so we can do Step 7 easily
+        for ann_col in app_instance.annotation_columns:
+            if ann_col not in processed.columns:
+                processed[ann_col] = data[ann_col]
+
+        # Store processed data
+        app_instance.processed_data = processed
+        st.session_state["processed_data"] = processed
+
+        # Rebuild column_descriptions so it only includes the newly renamed analysis columns
+        updated_column_descriptions: Dict[str, str] = {}
+        renamed_values = list(app_instance.column_renames.values())
+
+        for col in processed.columns:
+            # Only include columns that are renamed values of selected columns
+            if col in renamed_values:
+                updated_column_descriptions[col] = app_instance.column_descriptions.get(
+                    col, ""
+                )
+
+        app_instance.column_descriptions = updated_column_descriptions
+        st.session_state["column_descriptions"] = app_instance.column_descriptions
+
+        st.success("Columns processed successfully!")
+        st.write("Processed Data Preview:")
+        st.dataframe(processed.head())
 
     return processed

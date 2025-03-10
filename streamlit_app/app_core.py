@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from streamlit_app.data_upload import upload_dataset
-from streamlit_app.session_management import load_previous_session, save_session
 from streamlit_app.column_selection import select_rename_describe_columns
 from streamlit_app.codebook_management import codebook_and_examples
 from streamlit_app.field_selection import select_fields
@@ -63,13 +62,12 @@ class QualitativeAnalysisApp:
         Main entry point for the Streamlit app.
         Executes each analysis step in sequence if the required data is available.
         """
-        st.title("Qualitative Analysis")
+        st.title("LLM4Humanities")
 
         # App Purpose Explanation
         st.markdown(
             """
-            ### About This App
-            This **Qualitative Analysis App** helps you analyze qualitative datasets 
+            **LLM4Humanities** helps you analyze qualitative datasets 
             using Large Language Models.
             You will need a dataset to analyse, a codebook, and a valid API key (OpenAi or Together).
             """,
@@ -77,13 +75,10 @@ class QualitativeAnalysisApp:
         )
 
         # Step 1: Upload Dataset
-        self.data = upload_dataset(self.data, st.session_state)
+        self.data = upload_dataset(self, st.session_state)
 
         # Steps 2-7 are only relevant if data is uploaded
         if self.data is not None:
-            # Load previous session if a JSON is imported
-            load_previous_session(self)
-
             # Step 2: Select & Rename Columns, Add Descriptions, plus annotation filtering
             self.processed_data = select_rename_describe_columns(self, self.data)
 
@@ -92,9 +87,6 @@ class QualitativeAnalysisApp:
 
             # Step 4: Fields to Extract
             self.selected_fields = select_fields(self)
-
-            # Offer to Save Session here before moving to Step 5
-            save_session(self)
 
             # Step 5: Configure LLM (provider & model)
             self.llm_client = configure_llm(self)
