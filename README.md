@@ -6,7 +6,7 @@ This toolkit provides a method for automatic annotation of qualitative data.
 You will find two web interfaces that require no coding skills to help you perform manual and automatic annotations of your data.
 
 The idea is that you can use a LLM to automatically annotate your data. 
-First, you will need to manually annotate a subset of data (using the Manual Annotator).
+First, you will need to manually annotate a subset of data (using the Manual Annotator app).
 Then, you will be able to evaluate metrics between human and LLM annotations to determine if you can safely annotate the rest of your data using the automation annotation tool (using the LLM4Humanities app).
 
 We provide several metrics for you to use as you wish to make your own informed choice.
@@ -22,11 +22,11 @@ The web app requires a consistent format of data, either CSV or Excel, where one
 
 Click the link below to run the **manual annotator**: 
 
-[Run the Manual annotator](https://datannotate.streamlit.app/)
+[Run the Manual annotator App](https://datannotate.streamlit.app/)
 
 Click the link below to run the **web app**: 
 
-[Run the Qualitative Analysis App](https://flowanalysis.streamlit.app/)
+[Run the LLM4Humanities App](https://flowanalysis.streamlit.app/)
 
 ### **Run in Google Colab**
 
