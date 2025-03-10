@@ -28,6 +28,65 @@ import numpy as np
 from scipy.stats import ttest_1samp
 
 
+def convert_labels(labels: List[Any], label_type: str = "auto") -> List[Any]:
+    """
+    Convert a list of labels to the specified type.
+
+    Parameters
+    ----------
+    labels : List[Any]
+        The list of labels to convert.
+    label_type : str, optional
+        The type to convert the labels to. Options are:
+        - "int": Convert all labels to integers
+        - "str": Convert all labels to strings
+        - "auto": Infer the best type (default)
+
+    Returns
+    -------
+    List[Any]
+        The list of converted labels.
+    """
+    if label_type == "int":
+        # Convert all labels to integers
+        return [
+            int(label) if label != -1 and not pd.isna(label) else label
+            for label in labels
+        ]
+    elif label_type == "str":
+        # Convert all labels to strings
+        return [str(label) if not pd.isna(label) else label for label in labels]
+    elif label_type == "auto":
+        # Try to infer the best type
+        try:
+            # Check if all labels can be converted to integers
+            # Skip NA values and -1 (used for missing values)
+            all_int = all(
+                isinstance(label, int)
+                or (
+                    isinstance(label, (str, float))
+                    and label != -1
+                    and not pd.isna(label)
+                    and float(label).is_integer()
+                )
+                for label in labels
+                if not pd.isna(label)
+            )
+            if all_int:
+                return [
+                    int(label) if label != -1 and not pd.isna(label) else label
+                    for label in labels
+                ]
+            else:
+                return [str(label) if not pd.isna(label) else label for label in labels]
+        except (ValueError, TypeError):
+            # If conversion fails, return as strings
+            return [str(label) if not pd.isna(label) else label for label in labels]
+    else:
+        # Unknown label_type, return as is
+        return labels
+
+
 def benjamini_yekutieli_correction(
     pvals: List[float], alpha: float = 0.05
 ) -> List[bool]:
@@ -153,6 +212,7 @@ def run_alt_test_general(
     alpha: float = 0.05,
     metric: str = "accuracy",
     verbose: bool = True,
+    label_type: str = "auto",
 ) -> Dict[str, Any]:
     """
     Runs the Alternative Annotator Test (alt-test) on a DataFrame containing model predictions
@@ -193,6 +253,11 @@ def run_alt_test_general(
         The metric used for computing alignment scores. Options are "accuracy" (default) or "rmse".
     verbose : bool, optional
         If True, prints a summary of the alt-test results (default is True).
+    label_type : str, optional
+        The type to convert labels to before comparison. Options are:
+        - "int": Convert all labels to integers
+        - "str": Convert all labels to strings
+        - "auto": Infer the best type (default)
 
     Returns
     -------
@@ -206,6 +271,10 @@ def run_alt_test_general(
             - 'rho_h': List of advantage probabilities for each annotator versus the model.
             - 'average_advantage_probability': The average of the model's advantage probabilities.
             - 'passed_alt_test': Boolean indicating if the model passes the alt-test (winning_rate >= 0.5).
+            - 'label_counts': Dictionary with counts of valid labels for each rater.
+            - 'label_types': Dictionary with types of labels for each rater.
+            - 'mixed_types': Boolean indicating if there are mixed types across raters.
+            - 'label_type_used': String indicating which label type conversion was used.
 
     Raises
     ------
@@ -222,6 +291,50 @@ def run_alt_test_general(
     # This produces a boolean DataFrame where True means "value is not-null and not an empty string."
     valid_mask = df[annotation_columns].notna() & df[annotation_columns].ne("")
 
+    # DEBUGGING: Count valid labels for each rater
+    label_counts = {}
+    label_types = {}
+
+    # Count valid labels for the model
+    model_valid = df[model_col].notna() & (df[model_col] != "")
+    label_counts[model_col] = model_valid.sum()
+
+    # Determine the type of model labels
+    model_values = df.loc[model_valid, model_col].values
+    model_types = set(type(val) for val in model_values if pd.notna(val))
+    label_types[model_col] = [t.__name__ for t in model_types]
+
+    # Count valid labels for each annotator
+    for col in annotation_columns:
+        col_valid = df[col].notna() & (df[col] != "")
+        label_counts[col] = col_valid.sum()
+
+        # Determine the type of annotator labels
+        col_values = df.loc[col_valid, col].values
+        col_types = set(type(val) for val in col_values if pd.notna(val))
+        label_types[col] = [t.__name__ for t in col_types]
+
+    # Check if there are mixed types across all raters
+    all_types = set()
+    for types in label_types.values():
+        all_types.update(types)
+    mixed_types = len(all_types) > 1
+
+    if verbose:
+        print("=== ALT Test: Label Debugging ===")
+        print("Label counts for each rater:")
+        for rater, count in label_counts.items():
+            print(f"  {rater}: {count} valid labels")
+
+        print("\nLabel types for each rater:")
+        for rater, types in label_types.items():
+            print(f"  {rater}: {', '.join(types)}")
+
+        print(f"\nMixed types across raters: {mixed_types}")
+        if mixed_types:
+            print(f"  All types found: {', '.join(all_types)}")
+        print("=" * 40)
+
     # Filter rows to only those with at least 3 valid annotations.
     df_valid = df[valid_mask.sum(axis=1) >= 3].copy()
     if df_valid.empty:
@@ -230,9 +343,39 @@ def run_alt_test_general(
         )
 
     # Convert to numpy arrays.
-    llm_vals = df_valid[model_col].values
+    llm_vals_raw = df_valid[model_col].values
     # For each annotator column, get the array of values (which may contain missing entries).
-    ann_arrays = [df_valid[c].values for c in annotation_columns]
+    ann_arrays_raw = [df_valid[c].values for c in annotation_columns]
+
+    # Convert labels to consistent types
+    if verbose:
+        print("\n=== Converting labels to consistent types ===")
+        print(f"Using label_type: {label_type}")
+
+    # Convert model predictions
+    llm_vals_list = llm_vals_raw.tolist()
+    llm_vals_converted = convert_labels(llm_vals_list, label_type)
+    llm_vals = np.array(llm_vals_converted)
+
+    # Convert annotator values
+    ann_arrays = []
+    for j, arr in enumerate(ann_arrays_raw):
+        arr_list = arr.tolist()
+        arr_converted = convert_labels(arr_list, label_type)
+        ann_arrays.append(np.array(arr_converted))
+
+    if verbose:
+        print(
+            f"Model predictions type after conversion: {type(llm_vals[0]) if len(llm_vals) > 0 else 'empty'}"
+        )
+        for j, col in enumerate(annotation_columns):
+            val_type = (
+                type(ann_arrays[j][0])
+                if len(ann_arrays[j]) > 0 and not pd.isna(ann_arrays[j][0])
+                else "empty/NA"
+            )
+            print(f"{col} type after conversion: {val_type}")
+
     n = len(df_valid)
     m = len(annotation_columns)
 
@@ -304,11 +447,13 @@ def run_alt_test_general(
 
     if verbose:
         print("=== Alt-Test: summary ===")
+        print("P-values for each comparison:")
         for j in range(m):
             print(
                 f"{annotation_columns[j]}: p={pvals[j]:.4f} => rejectH0={rejections[j]} | "
                 f"rho_f={rho_f_vals[j]:.3f}, rho_h={rho_h_vals[j]:.3f}"
             )
+        print("\nSummary statistics:")
         print(f"Winning Rate (omega) = {winning_rate:.3f}")
         print(f"Average Advantage Probability (rho) = {avg_adv_prob:.3f}")
         print(f"Passed Alt-Test? => {passed_alt_test}")
@@ -322,4 +467,8 @@ def run_alt_test_general(
         "rho_h": rho_h_vals,
         "average_advantage_probability": avg_adv_prob,
         "passed_alt_test": passed_alt_test,
+        "label_counts": label_counts,
+        "label_types": label_types,
+        "mixed_types": mixed_types,
+        "label_type_used": label_type,
     }

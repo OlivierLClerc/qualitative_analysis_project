@@ -38,6 +38,65 @@ from qualitative_analysis.evaluation import (
 import qualitative_analysis.config as config
 
 
+def convert_labels(labels: List[Any], label_type: str = "auto") -> List[Any]:
+    """
+    Convert a list of labels to the specified type.
+
+    Parameters
+    ----------
+    labels : List[Any]
+        The list of labels to convert.
+    label_type : str, optional
+        The type to convert the labels to. Options are:
+        - "int": Convert all labels to integers
+        - "str": Convert all labels to strings
+        - "auto": Infer the best type (default)
+
+    Returns
+    -------
+    List[Any]
+        The list of converted labels.
+    """
+    if label_type == "int":
+        # Convert all labels to integers
+        return [
+            int(label) if label != -1 and not pd.isna(label) else label
+            for label in labels
+        ]
+    elif label_type == "str":
+        # Convert all labels to strings
+        return [str(label) if not pd.isna(label) else label for label in labels]
+    elif label_type == "auto":
+        # Try to infer the best type
+        try:
+            # Check if all labels can be converted to integers
+            # Skip NA values and -1 (used for missing values)
+            all_int = all(
+                isinstance(label, int)
+                or (
+                    isinstance(label, (str, float))
+                    and label != -1
+                    and not pd.isna(label)
+                    and float(label).is_integer()
+                )
+                for label in labels
+                if not pd.isna(label)
+            )
+            if all_int:
+                return [
+                    int(label) if label != -1 and not pd.isna(label) else label
+                    for label in labels
+                ]
+            else:
+                return [str(label) if not pd.isna(label) else label for label in labels]
+        except (ValueError, TypeError):
+            # If conversion fails, return as strings
+            return [str(label) if not pd.isna(label) else label for label in labels]
+    else:
+        # Unknown label_type, return as is
+        return labels
+
+
 def find_discrepancies(df: pd.DataFrame, verbose: bool = True) -> List[Dict[str, Any]]:
     """
     Identifies discrepancies between the model predictions and human-provided labels within a DataFrame.
@@ -236,6 +295,10 @@ def run_iterative_prompt_improvement(
 
     The labels parameter specifies the allowed label set and is used when computing Cohen's kappa.
 
+    The label_type parameter (from the scenario dictionary) specifies how to convert labels for consistent
+    comparison. This is important when comparing labels with different types (e.g., int vs float).
+    Options are "int", "str", or "auto" (default).
+
     Returns:
       - best_prompt: The best prompt found.
       - best_accuracy: The best validation accuracy achieved.
@@ -258,6 +321,9 @@ def run_iterative_prompt_improvement(
     response_template = scenario.get("response_template", None)
     json_output = scenario.get("json_output", False)
     selected_fields = scenario.get("selected_fields", None)
+
+    # Get the label_type from scenario, default to 'auto' if not specified
+    label_type = scenario.get("label_type", "auto")
 
     scenario_info = {
         "data_set": scenario.get("data_set", "default_data_set"),
@@ -326,9 +392,17 @@ def run_iterative_prompt_improvement(
         train_cost = train_totals["total_cost"]
         train_time_s = end_time - start_time
 
+        # Convert labels based on the specified label_type
         train_data["ModelPrediction"] = train_pred_df["Label"].values
-        y_true_train = train_data[ground_truth_column].tolist()
-        y_pred_train = train_data["ModelPrediction"].fillna(-1).tolist()
+
+        # Apply label type conversion to ground truth and predictions
+        y_true_train = convert_labels(
+            train_data[ground_truth_column].tolist(), label_type
+        )
+        y_pred_train = convert_labels(
+            train_data["ModelPrediction"].fillna(-1).tolist(), label_type
+        )
+
         accuracy_train = accuracy_score(y_true_train, y_pred_train)
         kappa_train = compute_cohens_kappa(y_true_train, y_pred_train, labels=labels)
 
@@ -340,6 +414,7 @@ def run_iterative_prompt_improvement(
                 epsilon=epsilon,
                 alpha=0.05,
                 verbose=verbose,
+                label_type=label_type,
             )
             winning_rate_train = alt_test_res_train["winning_rate"]
             passed_alt_test_train = alt_test_res_train["passed_alt_test"]
@@ -367,8 +442,13 @@ def run_iterative_prompt_improvement(
         val_time_s = end_time_val - start_time_val
 
         val_data["ModelPrediction"] = val_pred_df["Label"].values
-        y_true_val = val_data[ground_truth_column].tolist()
-        y_pred_val = val_data["ModelPrediction"].fillna(-1).tolist()
+
+        # Apply label type conversion to ground truth and predictions for validation data
+        y_true_val = convert_labels(val_data[ground_truth_column].tolist(), label_type)
+        y_pred_val = convert_labels(
+            val_data["ModelPrediction"].fillna(-1).tolist(), label_type
+        )
+
         accuracy_val = accuracy_score(y_true_val, y_pred_val)
         kappa_val = compute_cohens_kappa(y_true_val, y_pred_val, labels=labels)
 
@@ -380,6 +460,7 @@ def run_iterative_prompt_improvement(
                 epsilon=epsilon,
                 alpha=0.05,
                 verbose=verbose,
+                label_type=label_type,
             )
             winning_rate_val = alt_test_res_val["winning_rate"]
             passed_alt_test_val = alt_test_res_val["passed_alt_test"]
