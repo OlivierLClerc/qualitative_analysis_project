@@ -10,7 +10,7 @@ First, you will need to manually annotate a subset of data (using the Manual Ann
 Then, you will be able to evaluate metrics between human and LLM annotations to determine if you can safely annotate the rest of your data using the automation annotation tool (using the LLM4Humanities app).
 
 We provide several metrics for you to use as you wish to make your own informed choice.
-We provide Cohen's Kappa between your set of annotated data and the same subsample annotated by a LLM, and we provide the alt-test procedure (see XX) which requires more annotators (at least 3 annotators) but is more robust.
+We provide Cohen's Kappa between your set of annotated data and the same subsample annotated by a LLM, and we provide the alt-test procedure (see [https://arxiv.org/pdf/2501.10970]) which requires more annotators (at least 3 annotators) but is more robust.
 
 The web app requires a consistent format of data, either CSV or Excel, where one row represents one entry to evaluate. You can have as many columns as you want to include in your analysis, but at least one of them should be a unique identifier.
 
