@@ -11,9 +11,34 @@ from qualitative_analysis import compute_cohens_kappa, run_alt_test_general
 
 def compare_with_external_judgments(app_instance: Any) -> None:
     """
-    Step 7: Compare with External Judgments,
-    now using annotation columns directly.
-    Optionally compute Cohen's Kappa (pairwise) or run the Alternative Annotator Test.
+    Step 7: Compare with External Judgments (Annotation Columns)
+
+    This step provides two options to measure how closely your LLM’s outputs align with existing
+    manually annotated labels. If the alignment is sufficiently high, you could rely on the
+    model-generated labels for annotating the rest of your unannotated data.
+
+    We provide two options for comparing the LLM's outputs with human annotations, Cohen's Kappa
+    and the Alternative Annotator Test (Alt-Test).
+
+    **Which Should I Choose?**
+      - If you have only one set of human labels or want a quick agreement measure:
+        Cohen’s Kappa is the simpler approach.
+      - If you have multiple annotation columns (≥ 3), want to see if the model
+        “outperforms” or “can replace” humans, and can afford 50–100 annotated items:
+        use the Alt-Test. This is more stringent because it compares against each
+        annotator in a leave-one-out manner.
+
+    In both cases, ideally 50+ annotated instances to get a stable estimate
+
+    The ultimate decision of whether a metric is “good enough” depends on your
+    research domain and practical considerations like cost, effort, and the
+    consequences of annotation mistakes.
+
+    If you are not satisfied with the model’s performance, you can go back to
+    Step 3 and adjust the codebook and examples.
+
+    Below, you can select your method, configure any needed parameters, and run
+    the computation.
     """
     st.header("Step 7: Compare with Annotation Columns")
 
@@ -122,6 +147,15 @@ def compare_with_external_judgments(app_instance: Any) -> None:
             **Alternative Annotator Test** (requires >= 3 annotation columns).  
             Compares the model's predictions to human annotators by excluding one human at a time 
             and measuring alignment with the remaining humans.
+            
+            - The test yields a “winning rate” (the proportion of annotators for
+               which the LLM outperforms or is at least as good as that annotator,
+               given the cost/benefit trade-off).
+             - “Epsilon” (ε), represents how much we adjust the human advantage to account for time/cost/effort
+               savings when using an LLM. Larger ε values make it easier for the LLM
+               to “pass” because it reflects that human annotations are costlier (if your human are experts, the original article recommend 0.2, if they are crowdworker, 0.1).
+             - If the LLM’s winning rate ≥ 0.5, the test concludes that the LLM is
+               (statistically) as viable as a human annotator for that dataset (the LLM is "better" than half the humans).
             """
         )
 
