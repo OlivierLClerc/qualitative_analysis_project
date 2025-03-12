@@ -31,6 +31,30 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
     "together": {
         "api_key": os.getenv("TOGETHER_API_KEY"),
     },
+    "vllm": {
+        # Default to a small model that works with minimal resources
+        "model_path": os.getenv(
+            "VLLM_MODEL_PATH", "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+        ),
+        # Optional parameters for vLLM
+        "dtype": os.getenv("VLLM_DTYPE", "float16"),  # Use float16 for efficiency
+        "gpu_memory_utilization": os.getenv(
+            "VLLM_GPU_MEMORY_UTILIZATION", "0.95"
+        ),  # Default to 95% GPU memory usage for supercomputers
+        "tensor_parallel_size": os.getenv(
+            "VLLM_TENSOR_PARALLEL_SIZE", "4"
+        ),  # Default to 4 GPUs for supercomputers
+        # Additional parameters for supercomputer usage
+        "max_model_len": os.getenv(
+            "VLLM_MAX_MODEL_LEN", "2048"
+        ),  # Maximum sequence length
+        "enable_prefix_caching": os.getenv(
+            "VLLM_ENABLE_PREFIX_CACHING", "true"
+        ),  # Enable prefix caching for better performance
+        "worker_multiproc_method": os.getenv(
+            "VLLM_WORKER_MULTIPROC_METHOD", "spawn"
+        ),  # Worker multiprocessing method
+    },
 }
 
 
