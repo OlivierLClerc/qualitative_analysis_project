@@ -34,6 +34,7 @@ from qualitative_analysis.cost_estimation import UsageProtocol
 import pandas as pd
 from collections import Counter
 from typing import List, Dict, Any, Tuple, Optional
+from types import SimpleNamespace
 
 
 def generate_multiclass_classification_answer(
@@ -359,6 +360,7 @@ def generate_binary_classification_answer(
             temperature=temperature,
             verbose=verbose,
         )
+        usage_1 = SimpleNamespace(**usage_1)
 
         second_prompt = (
             f"{final_prompt}\n\nReasoning:\n{response_text_1}\n\n{binary_query}"
@@ -387,6 +389,7 @@ def generate_binary_classification_answer(
             temperature=temperature,
             verbose=verbose,
         )
+
         return response_text, usage
 
 

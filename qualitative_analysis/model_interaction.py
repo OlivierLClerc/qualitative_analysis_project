@@ -16,6 +16,7 @@ Dependencies:
     - together: For interacting with Together AI models.
     - vllm: For running inference with open-source models locally.
     - abc: For defining the abstract base class.
+    - types: For using SimpleNamespace to standardize usage object representation.
 
 Classes:
     - LLMClient: Abstract base class defining the interface for LLM clients.
@@ -32,6 +33,7 @@ Functions:
 from abc import ABC, abstractmethod
 import openai
 from together import Together
+from types import SimpleNamespace
 
 # Try to import vLLM, but handle the case when it's not available
 # This could be due to import errors or platform compatibility issues
@@ -240,7 +242,9 @@ class AzureOpenAILLMClient(LLMClient):
         openai.azure_endpoint = endpoint
         openai.api_version = api_version
 
-    def get_response(self, prompt: str, model: str, **kwargs) -> tuple[str, object]:
+    def get_response(
+        self, prompt: str, model: str, **kwargs
+    ) -> tuple[str, SimpleNamespace]:
         """
         Sends a prompt to the Azure OpenAI language model and retrieves the response.
 
@@ -292,54 +296,21 @@ class AzureOpenAILLMClient(LLMClient):
 
         content = response.choices[0].message.content
 
-        # Convert usage object to a dictionary for consistency
         if response.usage:
-            usage_dict = {
-                "prompt_tokens": response.usage.prompt_tokens,
-                "completion_tokens": response.usage.completion_tokens,
-                "total_tokens": response.usage.total_tokens,
-            }
+            usage_obj = SimpleNamespace(
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens,
+            )
         else:
-            # Fallback if usage is not available
-            usage_dict = {
-                "prompt_tokens": len(prompt.split()),  # Very rough estimate
-                "completion_tokens": (
-                    len(content.split()) if content else 0
-                ),  # Very rough estimate
-                "total_tokens": len(prompt.split())
+            usage_obj = SimpleNamespace(
+                prompt_tokens=len(prompt.split()),
+                completion_tokens=(len(content.split()) if content else 0),
+                total_tokens=len(prompt.split())
                 + (len(content.split()) if content else 0),
-            }
+            )
 
-        return (content.strip() if content else ""), usage_dict
-
-    # def get_embedding(self, input_text, model, **kwargs):
-    #     """
-    #     Retrieves the embedding for the given input text using Azure OpenAI's embeddings endpoint.
-
-    #     Parameters:
-    #         input_text (str): The text to embed.
-    #         model (str): The deployment name of the Azure OpenAI embedding model to use.
-    #         **kwargs: Additional keyword arguments for the OpenAI API call.
-
-    #     Returns:
-    #         list: The embedding vector as a list of floats.
-
-    #     Raises:
-    #         openai.error.OpenAIError: If the API request fails.
-
-    #     Example:
-    #         embedding = client.get_embedding(
-    #             input_text="Sample text to embed.",
-    #             model="text-embedding-ada-002"
-    #         )
-    #     """
-    #     response = openai.embeddings.create(
-    #         input=input_text,
-    #         model=model,
-    #         **kwargs
-    #     )
-    #     embedding = response['data'][0]['embedding']
-    #     return embedding
+        return (content.strip() if content else ""), usage_obj
 
 
 class TogetherLLMClient(LLMClient):
@@ -375,7 +346,9 @@ class TogetherLLMClient(LLMClient):
         """
         self.client = Together(api_key=api_key)
 
-    def get_response(self, prompt: str, model: str, **kwargs) -> tuple[str, dict]:
+    def get_response(
+        self, prompt: str, model: str, **kwargs
+    ) -> tuple[str, SimpleNamespace]:
         """
         Sends a prompt to the Together AI language model and retrieves the response.
 
@@ -421,11 +394,11 @@ class TogetherLLMClient(LLMClient):
         content = response.choices[0].message.content.strip()
 
         # Create a simple usage object (Together AI doesn't always provide detailed token usage)
-        usage_obj = {
-            "prompt_tokens": len(prompt.split()),  # Very rough estimate
-            "completion_tokens": len(content.split()),  # Very rough estimate
-            "total_tokens": len(prompt.split()) + len(content.split()),
-        }
+        usage_obj = SimpleNamespace(
+            prompt_tokens=len(prompt.split()),
+            completion_tokens=len(content.split()),
+            total_tokens=len(prompt.split()) + len(content.split()),
+        )
 
         return content, usage_obj
 
@@ -487,7 +460,9 @@ class VLLMLLMClient(LLMClient):
         except Exception as e:
             raise RuntimeError(f"Failed to load model with vLLM: {e}")
 
-    def get_response(self, prompt: str, model: str, **kwargs) -> tuple[str, object]:
+    def get_response(
+        self, prompt: str, model: str, **kwargs
+    ) -> tuple[str, SimpleNamespace]:
         """
         Sends a prompt to the vLLM model and retrieves the response.
 
@@ -544,11 +519,12 @@ class VLLMLLMClient(LLMClient):
 
         # Create a simple usage object (vLLM doesn't provide detailed token usage)
         # This is a rough estimate for compatibility with other clients
-        usage_obj = {
-            "prompt_tokens": len(prompt.split()),  # Very rough estimate
-            "completion_tokens": len(generated_text.split()),  # Very rough estimate
-            "total_tokens": len(prompt.split()) + len(generated_text.split()),
-        }
+
+        usage_obj = SimpleNamespace(
+            prompt_tokens=len(prompt.split()),
+            completion_tokens=len(generated_text.split()),
+            total_tokens=len(prompt.split()) + len(generated_text.split()),
+        )
 
         return generated_text, usage_obj
 

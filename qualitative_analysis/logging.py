@@ -68,7 +68,17 @@ def calculate_and_log(df: pd.DataFrame, filename: str = "history.txt") -> None:
     cumulative_cost += total_cost_sum
 
     # Find the row with the best accuracy value
-    best_row = df.loc[df["accuracy_val"].idxmax()]
+    # Check if all values in accuracy_val are NaN
+    if df["accuracy_val"].isna().all():
+        # If all values are NaN, use the best accuracy_train as fallback
+        if "accuracy_train" in df.columns and not df["accuracy_train"].isna().all():
+            best_row = df.loc[df["accuracy_train"].idxmax()]
+        else:
+            # If no accuracy_train or all are NaN, use the first row
+            best_row = df.iloc[0]
+    else:
+        # Otherwise, find the row with the maximum accuracy_val
+        best_row = df.loc[df["accuracy_val"].idxmax()]
 
     # Get the current timestamp
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

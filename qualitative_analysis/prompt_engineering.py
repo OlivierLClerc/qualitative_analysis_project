@@ -272,9 +272,9 @@ IMPORTANT:
 def run_iterative_prompt_improvement(
     scenario: Dict[str, Any],
     train_data: pd.DataFrame,
-    val_data: pd.DataFrame,
-    annotation_columns: List[str],
-    labels: List[Any],
+    val_data: Optional[pd.DataFrame] = None,
+    annotation_columns: Optional[List[str]] = None,
+    labels: Optional[List[Any]] = None,
     alt_test: bool = True,
     errors_examples: float = 0.6,  # Fraction of examples that should be error examples
     examples_to_give: int = 10,  # Maximum total number of examples to pass to LLM2
@@ -299,9 +299,12 @@ def run_iterative_prompt_improvement(
     comparison. This is important when comparing labels with different types (e.g., int vs float).
     Options are "int", "str", or "auto" (default).
 
+    If val_data is not provided or is empty, the function will use only the training data for evaluation
+    and will track the best prompt based on training accuracy instead of validation accuracy.
+
     Returns:
       - best_prompt: The best prompt found.
-      - best_accuracy: The best validation accuracy achieved.
+      - best_accuracy: The best validation accuracy (or training accuracy if no validation data).
       - iteration_rows: A list of dictionaries capturing metrics from each iteration.
     """
     provider_1 = scenario["provider_llm1"]
@@ -325,24 +328,33 @@ def run_iterative_prompt_improvement(
     # Get the label_type from scenario, default to 'auto' if not specified
     label_type = scenario.get("label_type", "auto")
 
+    # Calculate N_val safely
+    n_val = 0
+    if val_data is not None:
+        n_val = len(val_data)
+
     scenario_info = {
         "data_set": scenario.get("data_set", "default_data_set"),
         "N_train": len(train_data),
-        "N_val": len(val_data),
+        "N_val": n_val,
         "provider": provider_1,
         "model_name": model_name_1,
         "temperature": temperature_llm1,
         "prompt_name": prompt_name,
     }
 
+    # Check if validation data is provided
+    use_validation = val_data is not None and not val_data.empty
+
     # Compute majority vote as ground truth using the provided annotation columns.
     if annotation_columns and len(annotation_columns) > 0:
         train_data["GroundTruth"] = train_data.apply(
             lambda row: row[annotation_columns].value_counts().idxmax(), axis=1
         )
-        val_data["GroundTruth"] = val_data.apply(
-            lambda row: row[annotation_columns].value_counts().idxmax(), axis=1
-        )
+        if use_validation and val_data is not None:
+            val_data["GroundTruth"] = val_data.apply(
+                lambda row: row[annotation_columns].value_counts().idxmax(), axis=1
+            )
         ground_truth_column = "GroundTruth"
     else:
         raise ValueError("You must provide annotation columns for majority voting.")
@@ -416,57 +428,71 @@ def run_iterative_prompt_improvement(
                 verbose=verbose,
                 label_type=label_type,
             )
+            p_value_train = alt_test_res_train["pvals"]
             winning_rate_train = alt_test_res_train["winning_rate"]
             passed_alt_test_train = alt_test_res_train["passed_alt_test"]
             avg_adv_prob_train = alt_test_res_train["average_advantage_probability"]
         else:
             winning_rate_train = passed_alt_test_train = avg_adv_prob_train = None
 
-        # Evaluate on validation set.
-        start_time_val = time.time()
-        val_pred_df, val_cost_info, val_totals = process_general_verbatims(
-            verbatims_subset=val_data["verbatim"].tolist(),
-            llm_client=llm1_client,
-            model_name=model_name_1,
-            prompt_template=full_prompt,
-            prefix=prefix_llm1,
-            temperature=temperature_llm1,
-            verbose=False,
-            json_output=json_output,
-            selected_fields=selected_fields,
-            n_completions=n_completions,
-        )
-        end_time_val = time.time()
-        val_tokens = val_totals["total_tokens_used"]
-        val_cost = val_totals["total_cost"]
-        val_time_s = end_time_val - start_time_val
+        # Initialize validation metrics
+        val_tokens = 0.0
+        val_cost = 0.0
+        val_time_s = 0.0
+        accuracy_val = None
+        kappa_val = None
+        winning_rate_val = None
+        passed_alt_test_val = None
+        avg_adv_prob_val = None
+        p_value_val = None
 
-        val_data["ModelPrediction"] = val_pred_df["Label"].values
-
-        # Apply label type conversion to ground truth and predictions for validation data
-        y_true_val = convert_labels(val_data[ground_truth_column].tolist(), label_type)
-        y_pred_val = convert_labels(
-            val_data["ModelPrediction"].fillna(-1).tolist(), label_type
-        )
-
-        accuracy_val = accuracy_score(y_true_val, y_pred_val)
-        kappa_val = compute_cohens_kappa(y_true_val, y_pred_val, labels=labels)
-
-        if alt_test:
-            alt_test_res_val = run_alt_test_general(
-                df=val_data,
-                annotation_columns=annotation_columns,
-                model_col="ModelPrediction",
-                epsilon=epsilon,
-                alpha=0.05,
-                verbose=verbose,
-                label_type=label_type,
+        # Evaluate on validation set if provided
+        if use_validation and val_data is not None:
+            start_time_val = time.time()
+            val_pred_df, val_cost_info, val_totals = process_general_verbatims(
+                verbatims_subset=val_data["verbatim"].tolist(),
+                llm_client=llm1_client,
+                model_name=model_name_1,
+                prompt_template=full_prompt,
+                prefix=prefix_llm1,
+                temperature=temperature_llm1,
+                verbose=False,
+                json_output=json_output,
+                selected_fields=selected_fields,
+                n_completions=n_completions,
             )
-            winning_rate_val = alt_test_res_val["winning_rate"]
-            passed_alt_test_val = alt_test_res_val["passed_alt_test"]
-            avg_adv_prob_val = alt_test_res_val["average_advantage_probability"]
-        else:
-            winning_rate_val = passed_alt_test_val = avg_adv_prob_val = None
+            end_time_val = time.time()
+            val_tokens = val_totals["total_tokens_used"]
+            val_cost = val_totals["total_cost"]
+            val_time_s = end_time_val - start_time_val
+
+            val_data["ModelPrediction"] = val_pred_df["Label"].values
+
+            # Apply label type conversion to ground truth and predictions for validation data
+            y_true_val = convert_labels(
+                val_data[ground_truth_column].tolist(), label_type
+            )
+            y_pred_val = convert_labels(
+                val_data["ModelPrediction"].fillna(-1).tolist(), label_type
+            )
+
+            accuracy_val = accuracy_score(y_true_val, y_pred_val)
+            kappa_val = compute_cohens_kappa(y_true_val, y_pred_val, labels=labels)
+
+            if alt_test:
+                alt_test_res_val = run_alt_test_general(
+                    df=val_data,
+                    annotation_columns=annotation_columns,
+                    model_col="ModelPrediction",
+                    epsilon=epsilon,
+                    alpha=0.05,
+                    verbose=verbose,
+                    label_type=label_type,
+                )
+                p_value_val = alt_test_res_val["pvals"]
+                winning_rate_val = alt_test_res_val["winning_rate"]
+                passed_alt_test_val = alt_test_res_val["passed_alt_test"]
+                avg_adv_prob_val = alt_test_res_val["average_advantage_probability"]
 
         total_tokens = train_tokens + val_tokens
         total_cost = train_cost + val_cost
@@ -475,7 +501,11 @@ def run_iterative_prompt_improvement(
             effect = "N/A"
             changes_record = "Initial prompt"
         else:
-            if prev_accuracy_val is not None:
+            if (
+                use_validation
+                and prev_accuracy_val is not None
+                and accuracy_val is not None
+            ):
                 if accuracy_val > prev_accuracy_val:
                     effect = "Those changes improved the classification"
                 elif accuracy_val < prev_accuracy_val:
@@ -488,21 +518,35 @@ def run_iterative_prompt_improvement(
                 last_changes if last_changes is not None else "No changes recorded"
             )
 
-        history_entry = {
-            "iteration": iteration,
-            "accuracy_val": accuracy_val,
-            "changes": changes_record,
-            "effect_of_changes": effect,
-        }
+        # Create history entry - use training accuracy if validation is not available
+        if use_validation:
+            history_entry = {
+                "iteration": iteration,
+                "accuracy_val": accuracy_val,
+                "changes": changes_record,
+                "effect_of_changes": effect,
+            }
+        else:
+            history_entry = {
+                "iteration": iteration,
+                "accuracy_train": accuracy_train,  # Use training accuracy instead
+                "changes": changes_record,
+                "effect_of_changes": effect,
+            }
         prompt_history.append(history_entry)
 
-        # Compute human annotator accuracies on the training and validation sets.
+        # Compute human annotator accuracies on the training set
         train_human_accuracies = compute_human_accuracies(
             train_data, annotation_columns, ground_truth_column=ground_truth_column
         )
-        val_human_accuracies = compute_human_accuracies(
-            val_data, annotation_columns, ground_truth_column=ground_truth_column
-        )
+
+        # Compute human annotator accuracies on the validation set if available
+        if use_validation and val_data is not None:
+            val_human_accuracies = compute_human_accuracies(
+                val_data, annotation_columns, ground_truth_column=ground_truth_column
+            )
+        else:
+            val_human_accuracies = {}  # Empty dict when no validation set
 
         # Build the iteration row dictionary with your existing metrics.
         row = {
@@ -519,9 +563,11 @@ def run_iterative_prompt_improvement(
             "winning_rate_train": winning_rate_train,
             "passed_alt_test_train": passed_alt_test_train,
             "avg_adv_prob_train": avg_adv_prob_train,
+            "p_values_train": p_value_train if alt_test else None,
             "winning_rate_val": winning_rate_val,
             "passed_alt_test_val": passed_alt_test_val,
             "avg_adv_prob_val": avg_adv_prob_val,
+            "p_values_val": p_value_val if alt_test else None,
             "tokens_used": total_tokens,
             "cost": total_cost,
             "running_time_s": train_time_s + val_time_s,
@@ -539,9 +585,16 @@ def run_iterative_prompt_improvement(
         # Append the row to your iteration results.
         iteration_rows.append(row)
 
-        if accuracy_val > best_accuracy:
-            best_accuracy = accuracy_val
-            best_prompt = current_prompt
+        # Track the best prompt based on validation accuracy if available, otherwise use training accuracy
+        if use_validation:
+            if accuracy_val is not None and accuracy_val > best_accuracy:
+                best_accuracy = accuracy_val
+                best_prompt = current_prompt
+        else:
+            # When no validation set is provided, use training accuracy
+            if accuracy_train > best_accuracy:
+                best_accuracy = accuracy_train
+                best_prompt = current_prompt
 
         bad_examples = []
         good_examples = []
