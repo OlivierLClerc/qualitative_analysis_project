@@ -8,7 +8,7 @@ defines pricing data for API usage cost estimation.
 
 import os
 from dotenv import load_dotenv
-from typing import Dict, Optional
+from typing import Dict, Any
 
 # Load environment variables from a .env file
 # This file should contain sensitive keys like API keys and endpoints.
@@ -16,7 +16,7 @@ load_dotenv()
 
 # Configuration dictionary for different model providers.
 # 'azure' contains settings for accessing Azure's OpenAI services
-MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
+MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
     "azure": {
         "api_key": os.getenv("AZURE_API_KEY"),
         "endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),
@@ -40,14 +40,16 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
         ),
         # Use half precision (equivalent to float16)
         "dtype": os.getenv("VLLM_DTYPE", "half"),
-        # Force eager execution mode
-        "enforce_eager": os.getenv("VLLM_ENFORCE_EAGER", "true"),
-        # Disable async output processing
-        "disable_async_output_proc": os.getenv("VLLM_DISABLE_ASYNC", "true"),
-        # Start with tensor parallel size 1, can increase if needed
-        "tensor_parallel_size": os.getenv("VLLM_TENSOR_PARALLEL_SIZE", "1"),
-        # Enable prefix caching for better performance
-        "enable_prefix_caching": os.getenv("VLLM_ENABLE_PREFIX_CACHING", "true"),
+        # Force eager execution mode (convert string to boolean)
+        "enforce_eager": os.getenv("VLLM_ENFORCE_EAGER", "true").lower() == "true",
+        # Disable async output processing (convert string to boolean)
+        "disable_async_output_proc": os.getenv("VLLM_DISABLE_ASYNC", "true").lower()
+        == "true",
+        # Start with tensor parallel size 1, can increase if needed (convert string to int)
+        "tensor_parallel_size": int(os.getenv("VLLM_TENSOR_PARALLEL_SIZE", "1")),
+        # Enable prefix caching for better performance (convert string to boolean)
+        "enable_prefix_caching": os.getenv("VLLM_ENABLE_PREFIX_CACHING", "true").lower()
+        == "true",
     },
 }
 

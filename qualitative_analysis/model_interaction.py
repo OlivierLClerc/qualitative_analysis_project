@@ -620,10 +620,34 @@ def get_llm_client(
 
         for key in supported_params:
             if key in config:
-                # Convert string 'true'/'false' to boolean for enable_prefix_caching
-                if key == "enable_prefix_caching" and config[key] in ["true", "false"]:
-                    kwargs[key] = config[key].lower() == "true"
+                # Handle type conversions for different parameter types
+                if key in [
+                    "enforce_eager",
+                    "disable_async_output_proc",
+                    "enable_prefix_caching",
+                ]:
+                    # These are boolean parameters
+                    if isinstance(config[key], bool):
+                        kwargs[key] = config[key]
+                    elif isinstance(config[key], str) and config[key].lower() in [
+                        "true",
+                        "false",
+                    ]:
+                        kwargs[key] = config[key].lower() == "true"
+                    else:
+                        # Default to False for invalid values
+                        kwargs[key] = False
+                elif key == "tensor_parallel_size":
+                    # This is an integer parameter
+                    if isinstance(config[key], int):
+                        kwargs[key] = config[key]
+                    elif isinstance(config[key], str) and config[key].isdigit():
+                        kwargs[key] = int(config[key])
+                    else:
+                        # Default to 1 for invalid values
+                        kwargs[key] = 1
                 else:
+                    # Pass other parameters as-is
                     kwargs[key] = config[key]
 
         return VLLMLLMClient(model_path=model_path, **kwargs)
