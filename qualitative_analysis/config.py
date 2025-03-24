@@ -34,28 +34,12 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
     "vllm": {
         # Explicitly set device type to fix "Failed to infer device type" error
         "device": os.getenv("VLLM_DEVICE", "cuda"),
-        # Specify which GPU to use (0 is usually the first GPU)
-        "gpu_ids": os.getenv("VLLM_GPU_IDS", "0"),
         # Default to a small model that works with minimal resources
         "model_path": os.getenv(
             "VLLM_MODEL_PATH", "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
         ),
-        # Optional parameters for vLLM
-        "dtype": os.getenv("VLLM_DTYPE", "float16"),  # Use float16 for efficiency
-        "gpu_memory_utilization": os.getenv(
-            "VLLM_GPU_MEMORY_UTILIZATION", "0.95"
-        ),  # Default to 95% GPU memory usage for supercomputers
-        "tensor_parallel_size": os.getenv(
-            "VLLM_TENSOR_PARALLEL_SIZE", "1"
-        ),  # Reduced from 4 to 1 for initial testing
-        # Additional parameters for supercomputer usage
-        "max_model_len": os.getenv(
-            "VLLM_MAX_MODEL_LEN", "2048"
-        ),  # Maximum sequence length
-        "enable_prefix_caching": os.getenv(
-            "VLLM_ENABLE_PREFIX_CACHING", "true"
-        ),  # Enable prefix caching for better performance
-        # Removed worker_multiproc_method as it's not supported in some vLLM versions
+        # Use float16 for efficiency
+        "dtype": os.getenv("VLLM_DTYPE", "float16"),
     },
 }
 

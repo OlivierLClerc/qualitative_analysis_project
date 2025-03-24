@@ -608,15 +608,10 @@ def get_llm_client(
 
         # Extract optional parameters
         kwargs = {}
-        # Define supported parameters - include device and gpu_ids parameters
+        # Define supported parameters - simplified to essential parameters only
         supported_params = [
             "device",
-            "gpu_ids",
             "dtype",
-            "gpu_memory_utilization",
-            "max_model_len",
-            "tensor_parallel_size",
-            "enable_prefix_caching",
         ]
 
         for key in supported_params:
