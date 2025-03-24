@@ -34,6 +34,7 @@ from abc import ABC, abstractmethod
 import openai
 from together import Together
 from types import SimpleNamespace
+from typing import Optional
 
 # Try to import vLLM, but handle the case when it's not available
 # This could be due to import errors or platform compatibility issues
@@ -529,7 +530,9 @@ class VLLMLLMClient(LLMClient):
         return generated_text, usage_obj
 
 
-def get_llm_client(provider: str, config: dict) -> LLMClient:
+def get_llm_client(
+    provider: str, config: dict, model: Optional[str] = None
+) -> LLMClient:
     """
     Factory function to instantiate an LLM client based on the specified provider.
 
@@ -561,6 +564,10 @@ def get_llm_client(provider: str, config: dict) -> LLMClient:
             - 'dtype':         (optional) Data type for model weights (e.g., 'float16').
             - 'gpu_memory_utilization': (optional) Target GPU memory utilization (0.0 to 1.0).
             - 'max_model_len': (optional) Maximum sequence length.
+
+    model : str, optional
+        The model name to use. For vLLM, this can be used instead of config["model_path"].
+        This allows using the model_name from the scenario directly.
 
     Returns
     -------
@@ -595,7 +602,9 @@ def get_llm_client(provider: str, config: dict) -> LLMClient:
                 "vLLM may not work on Windows without WSL. Please consider using a different provider like 'azure', 'openai', or 'together'."
             )
         # Extract required parameters
-        model_path = config["model_path"]
+        # Use model_name from scenario if provided in the function call
+        # This allows users to specify the model in the scenario like other providers
+        model_path = model if model else config["model_path"]
 
         # Extract optional parameters
         kwargs = {}

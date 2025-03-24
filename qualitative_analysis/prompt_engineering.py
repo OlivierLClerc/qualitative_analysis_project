@@ -361,10 +361,10 @@ def run_iterative_prompt_improvement(
 
     # Initialize LLM clients.
     llm1_client = get_llm_client(
-        provider=provider_1, config=config.MODEL_CONFIG[provider_1]
+        provider=provider_1, config=config.MODEL_CONFIG[provider_1], model=model_name_1
     )
     llm2_client = get_llm_client(
-        provider=provider_2, config=config.MODEL_CONFIG[provider_2]
+        provider=provider_2, config=config.MODEL_CONFIG[provider_2], model=model_name_2
     )
 
     current_prompt = initial_prompt
