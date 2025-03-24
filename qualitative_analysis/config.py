@@ -50,6 +50,10 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
         # Enable prefix caching for better performance (convert string to boolean)
         "enable_prefix_caching": os.getenv("VLLM_ENABLE_PREFIX_CACHING", "true").lower()
         == "true",
+        # Explicitly set the worker class to fix the "not enough values to unpack" error
+        "worker_cls": "vllm.worker.worker.Worker",
+        # Set distributed executor backend to None for local execution
+        "distributed_executor_backend": None,
     },
 }
 

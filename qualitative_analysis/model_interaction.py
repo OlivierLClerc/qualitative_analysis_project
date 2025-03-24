@@ -616,6 +616,8 @@ def get_llm_client(
             "disable_async_output_proc",
             "tensor_parallel_size",
             "enable_prefix_caching",
+            "worker_cls",
+            "distributed_executor_backend",
         ]
 
         for key in supported_params:
