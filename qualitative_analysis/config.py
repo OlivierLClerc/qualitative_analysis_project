@@ -32,6 +32,10 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
         "api_key": os.getenv("TOGETHER_API_KEY"),
     },
     "vllm": {
+        # Explicitly set device type to fix "Failed to infer device type" error
+        "device": os.getenv("VLLM_DEVICE", "cuda"),
+        # Specify which GPU to use (0 is usually the first GPU)
+        "gpu_ids": os.getenv("VLLM_GPU_IDS", "0"),
         # Default to a small model that works with minimal resources
         "model_path": os.getenv(
             "VLLM_MODEL_PATH", "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
@@ -42,8 +46,8 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
             "VLLM_GPU_MEMORY_UTILIZATION", "0.95"
         ),  # Default to 95% GPU memory usage for supercomputers
         "tensor_parallel_size": os.getenv(
-            "VLLM_TENSOR_PARALLEL_SIZE", "4"
-        ),  # Default to 4 GPUs for supercomputers
+            "VLLM_TENSOR_PARALLEL_SIZE", "1"
+        ),  # Reduced from 4 to 1 for initial testing
         # Additional parameters for supercomputer usage
         "max_model_len": os.getenv(
             "VLLM_MAX_MODEL_LEN", "2048"

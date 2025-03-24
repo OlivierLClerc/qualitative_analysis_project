@@ -608,8 +608,10 @@ def get_llm_client(
 
         # Extract optional parameters
         kwargs = {}
-        # Define supported parameters - exclude worker_multiproc_method which is not supported in some vLLM versions
+        # Define supported parameters - include device and gpu_ids parameters
         supported_params = [
+            "device",
+            "gpu_ids",
             "dtype",
             "gpu_memory_utilization",
             "max_model_len",
