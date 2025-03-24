@@ -608,10 +608,14 @@ def get_llm_client(
 
         # Extract optional parameters
         kwargs = {}
-        # Define supported parameters - simplified to essential parameters only
+        # Define supported parameters based on successful Jean Zay configuration
         supported_params = [
             "device",
             "dtype",
+            "enforce_eager",
+            "disable_async_output_proc",
+            "tensor_parallel_size",
+            "enable_prefix_caching",
         ]
 
         for key in supported_params:

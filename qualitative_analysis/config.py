@@ -38,8 +38,16 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
         "model_path": os.getenv(
             "VLLM_MODEL_PATH", "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
         ),
-        # Use float16 for efficiency
-        "dtype": os.getenv("VLLM_DTYPE", "float16"),
+        # Use half precision (equivalent to float16)
+        "dtype": os.getenv("VLLM_DTYPE", "half"),
+        # Force eager execution mode
+        "enforce_eager": os.getenv("VLLM_ENFORCE_EAGER", "true"),
+        # Disable async output processing
+        "disable_async_output_proc": os.getenv("VLLM_DISABLE_ASYNC", "true"),
+        # Start with tensor parallel size 1, can increase if needed
+        "tensor_parallel_size": os.getenv("VLLM_TENSOR_PARALLEL_SIZE", "1"),
+        # Enable prefix caching for better performance
+        "enable_prefix_caching": os.getenv("VLLM_ENABLE_PREFIX_CACHING", "true"),
     },
 }
 
