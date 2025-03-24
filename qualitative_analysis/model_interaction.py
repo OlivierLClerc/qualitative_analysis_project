@@ -608,14 +608,16 @@ def get_llm_client(
 
         # Extract optional parameters
         kwargs = {}
-        for key in [
+        # Define supported parameters - exclude worker_multiproc_method which is not supported in some vLLM versions
+        supported_params = [
             "dtype",
             "gpu_memory_utilization",
             "max_model_len",
             "tensor_parallel_size",
             "enable_prefix_caching",
-            "worker_multiproc_method",
-        ]:
+        ]
+
+        for key in supported_params:
             if key in config:
                 # Convert string 'true'/'false' to boolean for enable_prefix_caching
                 if key == "enable_prefix_caching" and config[key] in ["true", "false"]:

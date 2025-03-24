@@ -51,9 +51,7 @@ MODEL_CONFIG: Dict[str, Dict[str, Optional[str]]] = {
         "enable_prefix_caching": os.getenv(
             "VLLM_ENABLE_PREFIX_CACHING", "true"
         ),  # Enable prefix caching for better performance
-        "worker_multiproc_method": os.getenv(
-            "VLLM_WORKER_MULTIPROC_METHOD", "spawn"
-        ),  # Worker multiprocessing method
+        # Removed worker_multiproc_method as it's not supported in some vLLM versions
     },
 }
 
