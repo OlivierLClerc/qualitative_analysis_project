@@ -618,6 +618,8 @@ def get_llm_client(
             "enable_prefix_caching",
             "worker_cls",
             "distributed_executor_backend",
+            "trust_remote_code",
+            "revision",
         ]
 
         for key in supported_params:

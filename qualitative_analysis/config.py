@@ -34,9 +34,13 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
     "vllm": {
         # Explicitly set device type to fix "Failed to infer device type" error
         "device": os.getenv("VLLM_DEVICE", "cuda"),
-        # Default to a small model that works with minimal resources
+        # Support both local paths and HuggingFace model IDs
+        # For Jean Zay: set VLLM_LOCAL_MODEL_PATH to the path where you downloaded the model
         "model_path": os.getenv(
-            "VLLM_MODEL_PATH", "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            "VLLM_LOCAL_MODEL_PATH",  # First check for a local path
+            os.getenv(
+                "VLLM_MODEL_PATH", "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            ),  # Fall back to HF ID
         ),
         # Use half precision (equivalent to float16)
         "dtype": os.getenv("VLLM_DTYPE", "half"),
@@ -54,6 +58,11 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
         "worker_cls": "vllm.worker.worker.Worker",
         # Set distributed executor backend to None for local execution
         "distributed_executor_backend": None,
+        # Prevent HuggingFace from trying to download anything when using local models
+        "trust_remote_code": os.getenv("VLLM_TRUST_REMOTE_CODE", "false").lower()
+        == "true",
+        # Don't try to fetch a specific revision when using local models
+        "revision": os.getenv("VLLM_REVISION", None),
     },
 }
 
