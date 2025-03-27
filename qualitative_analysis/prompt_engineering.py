@@ -632,31 +632,33 @@ def run_iterative_prompt_improvement(
                 print("No discrepancies found; stopping iterative improvement.")
             break
 
-        llm2_result = call_llm2_for_improvement(
-            llm2_client=llm2_client,
-            llm2_model_name=model_name_2,
-            current_prompt=current_prompt,
-            example_set=example_set,
-            prompt_history=prompt_history,
-            temperature=temperature_llm2,
-            verbose=verbose,
-            json_output=json_output,
-            response_template=response_template,
-        )
-        if llm2_result:
-            new_prompt = llm2_result["new_prompt"]
-            changes = llm2_result["changes"]
-            if verbose:
-                print("LLM2 suggested changes:", changes)
-            last_changes = changes
-            if json_output and response_template:
-                current_prompt = new_prompt.replace(response_template, "").strip()
+        # Only call LLM2 if there will be another iteration to use the improved prompt
+        if iteration < max_iterations:
+            llm2_result = call_llm2_for_improvement(
+                llm2_client=llm2_client,
+                llm2_model_name=model_name_2,
+                current_prompt=current_prompt,
+                example_set=example_set,
+                prompt_history=prompt_history,
+                temperature=temperature_llm2,
+                verbose=verbose,
+                json_output=json_output,
+                response_template=response_template,
+            )
+            if llm2_result:
+                new_prompt = llm2_result["new_prompt"]
+                changes = llm2_result["changes"]
+                if verbose:
+                    print("LLM2 suggested changes:", changes)
+                last_changes = changes
+                if json_output and response_template:
+                    current_prompt = new_prompt.replace(response_template, "").strip()
+                else:
+                    current_prompt = new_prompt
             else:
-                current_prompt = new_prompt
-        else:
-            if verbose:
-                print("No new prompt returned; terminating iteration.")
-            break
+                if verbose:
+                    print("No new prompt returned; terminating iteration.")
+                break
 
         prev_accuracy_val = accuracy_val
 
