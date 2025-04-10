@@ -21,12 +21,47 @@ Functions:
     - plot_confusion_matrices(model_coding, human_annotations, labels): 
       Generates confusion matrices comparing model predictions to human annotations 
       and between human annotators, visualized as heatmaps.
+      
+    - compute_classification_metrics(model_coding, human_annotations, labels=None): 
+      Computes detailed classification metrics including accuracy, recall, and error rates
+      globally and per class, using majority vote of human annotations as ground truth.
 """
 
-from sklearn.metrics import cohen_kappa_score, accuracy_score, confusion_matrix
+from sklearn.metrics import (
+    cohen_kappa_score,
+    accuracy_score,
+    confusion_matrix,
+    recall_score,
+)
+import numpy as np
+from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import List, Dict, Optional, Union, Mapping
+from typing import List, Dict, Optional, Union, Mapping, Any, TypedDict, cast
+import pandas as pd
+
+
+# TypedDict definitions for classification metrics
+class ClassMetrics(TypedDict):
+    recall: float
+    error_rate: float
+    correct_count: int  # TP
+    missed_count: int  # FN
+    false_positives: int  # FP
+
+
+class GlobalMetrics(TypedDict):
+    accuracy: float
+    recall: float
+    error_rate: float
+
+
+class ClassificationResults(TypedDict):
+    class_distribution: Dict[Union[int, str], int]
+    global_metrics: Dict[str, GlobalMetrics]
+    per_class_metrics: Dict[Union[int, str], Dict[str, ClassMetrics]]
+    ground_truth: List[Any]
+    confusion_matrices: Dict[str, np.ndarray]
 
 
 def compute_cohens_kappa(
@@ -330,3 +365,258 @@ def compute_human_accuracies(df, annotation_columns, ground_truth_column="Ground
         else:
             accuracies[col] = float("nan")
     return accuracies
+
+
+def compute_majority_vote(annotations: Dict[str, List], ignore_na: bool = True) -> List:
+    """
+    Computes the majority vote for each instance across multiple annotators.
+
+    Parameters:
+    ----------
+    annotations : Dict[str, List]
+        Dictionary where keys are annotator names and values are lists of annotations.
+    ignore_na : bool, optional
+        If True, ignores NA values when computing the majority vote. Default is True.
+
+    Returns:
+    -------
+    List
+        A list containing the majority vote for each instance.
+    """
+    if not annotations:
+        return []
+
+    # Get the number of instances
+    n_instances = len(next(iter(annotations.values())))
+
+    # Check that all annotators have the same number of instances
+    for annotator, labels in annotations.items():
+        if len(labels) != n_instances:
+            raise ValueError(
+                f"Annotator {annotator} has {len(labels)} instances, expected {n_instances}"
+            )
+
+    # Compute majority vote for each instance
+    majority_votes = []
+    for i in range(n_instances):
+        instance_labels = []
+        for annotator, labels in annotations.items():
+            label = labels[i]
+            if ignore_na and (pd.isna(label) or label == ""):
+                continue
+            instance_labels.append(label)
+
+        if not instance_labels:
+            # If all annotations are NA, use NA as the majority vote
+            majority_votes.append(np.nan)
+        else:
+            # Count occurrences of each label
+            label_counts = Counter(instance_labels)
+            # Find the label with the highest count
+            majority_label, _ = label_counts.most_common(1)[0]
+            majority_votes.append(majority_label)
+
+    return majority_votes
+
+
+def compute_classification_metrics(
+    model_coding: Union[List[int], List[str]],
+    human_annotations: Dict[str, Union[List[int], List[str]]],
+    labels: Optional[List[Union[int, str]]] = None,
+) -> ClassificationResults:
+    """
+    Computes detailed classification metrics including accuracy, recall, and error rates
+    globally and per class, using majority vote of human annotations as ground truth.
+
+    Parameters:
+    ----------
+    model_coding : List[int] or List[str]
+        Model predictions for each sample.
+
+    human_annotations : Dict[str, List[int] or List[str]]
+        Dictionary where keys are annotator names and values are lists of annotations.
+
+    labels : List[int] or List[str], optional
+        List of unique labels to use. If not provided, the unique values from
+        the model predictions and human annotations will be used.
+
+    Returns:
+    -------
+    Dict[str, Any]
+        A dictionary containing:
+            - 'class_distribution': Count of instances for each class in the ground truth
+            - 'global_metrics': Overall metrics for the model and each human annotator
+                - 'accuracy': Proportion of correct predictions
+                - 'error_rate': Proportion of incorrect predictions (1 - accuracy)
+                - 'recall': Average recall across all classes
+            - 'per_class_metrics': Metrics for each class
+                - 'recall': Proportion of actual positives correctly identified
+                - 'error_rate': Proportion of instances of this class that were misclassified
+                - 'correct_count': Number of correctly identified instances
+                - 'missed_count': Number of instances that were misclassified
+            - 'ground_truth': The majority vote used as ground truth
+            - 'confusion_matrices': Confusion matrices for the model and each human annotator
+
+    Raises:
+    ------
+    ValueError
+        If the annotations have inconsistent lengths.
+    """
+    # Check for length mismatches
+    for rater, annotations in human_annotations.items():
+        if len(model_coding) != len(annotations):
+            raise ValueError(
+                f"Length mismatch: model_coding and {rater}'s annotations must have the same length."
+            )
+
+    # Compute majority vote as ground truth
+    ground_truth = compute_majority_vote(human_annotations)
+
+    # Determine the unique labels if not provided
+    if labels is None:
+        all_labels = set(model_coding)
+        for annotations in human_annotations.values():
+            all_labels.update(annotations)
+        # Remove NA values
+        all_labels = {
+            label for label in all_labels if not pd.isna(label) and label != ""
+        }
+        # Cast to the expected type for sorted
+        labels = sorted(cast(List[Union[int, str]], list(all_labels)))
+
+    # Filter out instances where ground truth is NA
+    valid_indices = [
+        i for i, gt in enumerate(ground_truth) if not pd.isna(gt) and gt != ""
+    ]
+    filtered_gt = [ground_truth[i] for i in valid_indices]
+    filtered_model = cast(
+        Union[List[int], List[str]], [model_coding[i] for i in valid_indices]
+    )
+    filtered_human: Dict[str, Union[List[int], List[str]]] = {
+        rater: cast(
+            Union[List[int], List[str]], [annotations[i] for i in valid_indices]
+        )
+        for rater, annotations in human_annotations.items()
+    }
+
+    # Compute class distribution
+    class_distribution = Counter(filtered_gt)
+
+    # Initialize results dictionary
+    results: ClassificationResults = {
+        "class_distribution": dict(class_distribution),
+        "global_metrics": {},
+        "per_class_metrics": {label: {} for label in labels},
+        "ground_truth": ground_truth,
+        "confusion_matrices": {},
+    }
+
+    # Compute global metrics for the model
+    model_accuracy = accuracy_score(filtered_gt, filtered_model)
+    model_recall = recall_score(
+        filtered_gt, filtered_model, labels=labels, average="macro", zero_division=0
+    )
+    model_error_rate = 1.0 - model_accuracy
+
+    # Initialize global_metrics if empty
+    if "global_metrics" not in results:
+        results["global_metrics"] = {}
+
+    # Add model metrics
+    model_metrics: GlobalMetrics = {
+        "accuracy": model_accuracy,
+        "recall": model_recall,
+        "error_rate": model_error_rate,
+    }
+    results["global_metrics"]["model"] = model_metrics
+
+    # Compute per-class metrics for the model
+    model_cm = confusion_matrix(filtered_gt, filtered_model, labels=labels)
+
+    # Initialize confusion_matrices if empty
+    if "confusion_matrices" not in results:
+        results["confusion_matrices"] = {}
+
+    # Add model confusion matrix
+    results["confusion_matrices"]["model"] = model_cm
+
+    for i, label in enumerate(labels):
+        # True positives are on the diagonal
+        true_positives = model_cm[i, i]
+        # False negatives are in the row but not on the diagonal
+        false_negatives = sum(model_cm[i, :]) - true_positives
+        # False positives are in the column but not on the diagonal
+        false_positives = sum(model_cm[:, i]) - true_positives
+
+        # Calculate recall and error rate for this class
+        class_total = true_positives + false_negatives
+        if class_total > 0:
+            class_recall = true_positives / class_total
+            class_error_rate = false_negatives / class_total
+        else:
+            class_recall = 0.0
+            class_error_rate = 0.0
+
+        # Initialize per_class_metrics for this label if needed
+        if label not in results["per_class_metrics"]:
+            results["per_class_metrics"][label] = {}
+
+        # Add model metrics for this class
+        class_metrics: ClassMetrics = {
+            "recall": class_recall,
+            "error_rate": class_error_rate,
+            "correct_count": int(true_positives),
+            "missed_count": int(false_negatives),
+            "false_positives": int(false_positives),
+        }
+        results["per_class_metrics"][label]["model"] = class_metrics
+
+    # Compute metrics for each human annotator
+    for rater, annotations in filtered_human.items():
+        # Global metrics
+        rater_accuracy = accuracy_score(filtered_gt, annotations)
+        rater_recall = recall_score(
+            filtered_gt, annotations, labels=labels, average="macro", zero_division=0
+        )
+        rater_error_rate = 1.0 - rater_accuracy
+
+        # Add rater global metrics
+        rater_global_metrics: GlobalMetrics = {
+            "accuracy": rater_accuracy,
+            "recall": rater_recall,
+            "error_rate": rater_error_rate,
+        }
+        results["global_metrics"][rater] = rater_global_metrics
+
+        # Per-class metrics
+        rater_cm = confusion_matrix(filtered_gt, annotations, labels=labels)
+        results["confusion_matrices"][rater] = rater_cm
+
+        for i, label in enumerate(labels):
+            # True positives are on the diagonal
+            true_positives = rater_cm[i, i]
+            # False negatives are in the row but not on the diagonal
+            false_negatives = sum(rater_cm[i, :]) - true_positives
+            # False positives are in the column but not on the diagonal
+            false_positives = sum(rater_cm[:, i]) - true_positives
+
+            # Calculate recall and error rate for this class
+            class_total = true_positives + false_negatives
+            if class_total > 0:
+                class_recall = true_positives / class_total
+                class_error_rate = false_negatives / class_total
+            else:
+                class_recall = 0.0
+                class_error_rate = 0.0
+
+            # Add rater metrics for this class
+            rater_class_metrics: ClassMetrics = {
+                "recall": class_recall,
+                "error_rate": class_error_rate,
+                "correct_count": int(true_positives),
+                "missed_count": int(false_negatives),
+                "false_positives": int(false_positives),
+            }
+            results["per_class_metrics"][label][rater] = rater_class_metrics
+
+    return results

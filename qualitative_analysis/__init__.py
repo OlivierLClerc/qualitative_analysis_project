@@ -10,6 +10,7 @@ from .evaluation import (
     compute_cohens_kappa,
     compute_all_kappas,
     plot_confusion_matrices,
+    compute_classification_metrics,
 )
 from .model_interaction import (
     LLMClient,
@@ -40,6 +41,7 @@ __all__ = [
     "extract_global_validity",
     "compute_cohens_kappa",
     "compute_all_kappas",
+    "compute_classification_metrics",
     "plot_confusion_matrices",
     "LLMClient",
     "OpenAILLMClient",
