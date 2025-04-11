@@ -82,8 +82,32 @@ def compare_with_external_judgments(app_instance: Any) -> None:
                 - Mean agreement between LLM and all human annotators (when multiple annotators are available)
                 - Mean agreement among human annotators (when multiple annotators are available)
                 - Individual agreement scores for all comparisons
+                
+                **Weighting Options:**
+                - **Unweighted**: Treats all disagreements equally (e.g., disagreeing between 0 and 1 is the same as between 0 and 2)
+                - **Linear**: Weights disagreements by their distance (e.g., disagreeing between 0 and 2 is twice as bad as between 0 and 1)
+                - **Quadratic**: Weights disagreements by the square of their distance (e.g., disagreeing between 0 and 2 is four times as bad as between 0 and 1)
+                
+                Use weighting when your categories have a meaningful order (e.g., 0, 1, 2) and the magnitude of disagreement matters.
                 """
             )
+
+            # Add weighting option
+            weights_option = st.radio(
+                "Weighting Scheme:",
+                ["Unweighted", "Linear", "Quadratic"],
+                index=0,
+                key="kappa_weights_option",
+                help="Select how to weight disagreements between categories. Use weighting when categories have a meaningful order.",
+            )
+
+            # Convert the option to the format expected by the function
+            weights_map = {
+                "Unweighted": None,
+                "Linear": "linear",
+                "Quadratic": "quadratic",
+            }
+            weights = weights_map[weights_option]
 
             # LLM columns presumably the ones in selected_fields
             llm_columns: list[str] = [
@@ -160,9 +184,11 @@ def compare_with_external_judgments(app_instance: Any) -> None:
                 for col in app_instance.annotation_columns:
                     human_annotations[col] = analysis_data[col].tolist()
 
-                # Compute all kappa scores
+                # Compute all kappa scores with the selected weighting
                 kappa_scores = compute_all_kappas(
-                    analysis_data[llm_judgment_col].tolist(), human_annotations
+                    analysis_data[llm_judgment_col].tolist(),
+                    human_annotations,
+                    weights=weights,
                 )
 
                 # Calculate mean LLM-Human agreement
