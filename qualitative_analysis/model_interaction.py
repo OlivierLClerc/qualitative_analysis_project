@@ -6,6 +6,7 @@ including:
 
     - OpenAI
     - Azure OpenAI
+    - Anthropic
     - Together AI
     - vLLM (for open-source models)
 
@@ -13,6 +14,7 @@ It abstracts API interactions to simplify sending prompts and retrieving respons
 
 Dependencies:
     - openai: For interacting with Azure OpenAI or standard OpenAI models.
+    - anthropic: For interacting with Anthropic Claude models.
     - together: For interacting with Together AI models.
     - vllm: For running inference with open-source models locally.
     - abc: For defining the abstract base class.
@@ -22,6 +24,7 @@ Classes:
     - LLMClient: Abstract base class defining the interface for LLM clients.
     - OpenAILLMClient: Client for interacting with standard OpenAI language models.
     - AzureOpenAILLMClient: Client for interacting with Azure OpenAI language models.
+    - AnthropicLLMClient: Client for interacting with Anthropic Claude models.
     - TogetherLLMClient: Client for interacting with Together AI language models.
     - VLLMLLMClient: Client for interacting with open-source models using vLLM.
 
@@ -32,9 +35,11 @@ Functions:
 
 from abc import ABC, abstractmethod
 import openai
+from anthropic import Anthropic
 from together import Together
 from types import SimpleNamespace
 from typing import Optional
+import google.generativeai as genai
 
 # Try to import vLLM, but handle the case when it's not available
 # This could be due to import errors or platform compatibility issues
@@ -314,6 +319,106 @@ class AzureOpenAILLMClient(LLMClient):
         return (content.strip() if content else ""), usage_obj
 
 
+class AnthropicLLMClient(LLMClient):
+    """
+    Client for interacting with Anthropic Claude language models.
+
+    This class manages communication with the Anthropic API, enabling prompt-based
+    interactions with Claude models. It handles authentication via an Anthropic API key.
+
+    Attributes:
+    ----------
+    - client (Anthropic):
+        An instance of the Anthropic client initialized with the API key.
+
+    Methods:
+    -------
+    - get_response(prompt, model, **kwargs):
+        Sends a prompt to the Anthropic language model and retrieves the response.
+    """
+
+    def __init__(self, api_key: str):
+        """
+        Initializes the AnthropicLLMClient with the provided API key.
+
+        Parameters:
+        ----------
+        - api_key (str):
+            The API key for the Anthropic service.
+
+        Example:
+        -------
+        >>> client = AnthropicLLMClient(api_key='your_api_key')
+        """
+        self.client = Anthropic(api_key=api_key)
+
+    def get_response(
+        self, prompt: str, model: str, **kwargs
+    ) -> tuple[str, SimpleNamespace]:
+        """
+        Sends a prompt to the Anthropic Claude model and retrieves the response.
+
+        Parameters:
+        ----------
+        - prompt (str):
+            The input text prompt to send to the language model.
+        - model (str):
+            The identifier of the Anthropic model to use (e.g., "claude-3-7-sonnet-20250219").
+        - **kwargs:
+            Additional keyword arguments for the Anthropic API call, such as:
+                - temperature (float): Controls the randomness of the output (default is 0.0).
+                - max_tokens (int): The maximum number of tokens to generate (default is 500).
+                - verbose (bool): If True, prints the prompt and response for debugging (default is False).
+
+        Returns:
+        -------
+        - tuple[str, SimpleNamespace]:
+            A tuple containing:
+                - The model's generated response (str).
+                - A usage object with token counts (SimpleNamespace).
+
+        Raises:
+        ------
+        - Exception:
+            If the API request fails.
+        """
+        temperature = kwargs.get("temperature", 0.0)
+        max_tokens = kwargs.get("max_tokens", 500)
+        verbose = kwargs.get("verbose", False)
+
+        if verbose:
+            print(f"Prompt:\n{prompt}\n")
+
+        # Create a message with Anthropic's API
+        response = self.client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system="You are a helpful assistant.",
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        # Extract the content from the response
+        # The content is a list of ContentBlock objects
+        content_text = ""
+        for content_block in response.content:
+            # Check if the content block has a 'type' attribute and it's 'text'
+            if hasattr(content_block, "type") and content_block.type == "text":
+                content_text += content_block.text
+
+        if verbose:
+            print(f"Generation:\n{content_text}\n")
+
+        # Create a usage object with token counts
+        usage_obj = SimpleNamespace(
+            prompt_tokens=response.usage.input_tokens,
+            completion_tokens=response.usage.output_tokens,
+            total_tokens=response.usage.input_tokens + response.usage.output_tokens,
+        )
+
+        return content_text.strip(), usage_obj
+
+
 class TogetherLLMClient(LLMClient):
     """
     Client for interacting with Together AI language models.
@@ -367,8 +472,10 @@ class TogetherLLMClient(LLMClient):
 
         Returns:
         -------
-        - str:
-            The language model's response to the prompt.
+        - tuple[str, SimpleNamespace]:
+            A tuple containing:
+                - The language model's response to the prompt (str).
+                - A usage object with token counts (SimpleNamespace).
 
         Raises:
         ------
@@ -402,6 +509,105 @@ class TogetherLLMClient(LLMClient):
         )
 
         return content, usage_obj
+
+
+class GeminiLLMClient(LLMClient):
+    """
+    Client for interacting with Google Gemini language models.
+
+    This class manages communication with the Google Gemini API, enabling prompt-based
+    interactions with Gemini models. It handles authentication via a Google API key.
+
+    Attributes:
+    ----------
+    - api_key (str):
+        The Google API key used for authentication.
+
+    Methods:
+    -------
+    - get_response(prompt, model, **kwargs):
+        Sends a prompt to the Gemini language model and retrieves the response.
+    """
+
+    def __init__(self, api_key: str):
+        """
+        Initializes the GeminiLLMClient with the provided API key.
+
+        Parameters:
+        ----------
+        - api_key (str):
+            The API key for the Google Gemini service.
+
+        Example:
+        -------
+        >>> client = GeminiLLMClient(api_key='your_api_key')
+        """
+        genai.configure(api_key=api_key)
+
+    def get_response(
+        self, prompt: str, model: str, **kwargs
+    ) -> tuple[str, SimpleNamespace]:
+        """
+        Sends a prompt to the Google Gemini model and retrieves the response.
+
+        Parameters:
+        ----------
+        - prompt (str):
+            The input text prompt to send to the language model.
+        - model (str):
+            The identifier of the Gemini model to use (e.g., "gemini-2.0-flash-001").
+        - **kwargs:
+            Additional keyword arguments for the Gemini API call, such as:
+                - temperature (float): Controls the randomness of the output (default is 0.0).
+                - max_tokens (int): The maximum number of tokens to generate (default is 500).
+                - verbose (bool): If True, prints the prompt and response for debugging (default is False).
+
+        Returns:
+        -------
+        - tuple[str, SimpleNamespace]:
+            A tuple containing:
+                - The model's generated response (str).
+                - A usage object with estimated token counts (SimpleNamespace).
+
+        Raises:
+        ------
+        - Exception:
+            If the API request fails.
+        """
+        temperature = kwargs.get("temperature", 0.0)
+        max_tokens = kwargs.get("max_tokens", 500)
+        verbose = kwargs.get("verbose", False)
+
+        if verbose:
+            print(f"Prompt:\n{prompt}\n")
+
+        # Create a GenerativeModel instance
+        gemini_model = genai.GenerativeModel(model)
+
+        # Generate content
+        response = gemini_model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+            ),
+        )
+
+        # Extract the content from the response
+        content_text = response.text.strip()
+
+        if verbose:
+            print(f"Generation:\n{content_text}\n")
+
+        # Create a simple usage object (Gemini API doesn't provide token counts directly)
+        # This is a rough estimate for compatibility with other clients
+        usage_obj = SimpleNamespace(
+            prompt_tokens=len(prompt.split()),
+            completion_tokens=len(content_text.split()),
+            total_tokens=len(prompt.split()) + len(content_text.split()),
+        )
+
+        return content_text, usage_obj
 
 
 class VLLMLLMClient(LLMClient):
@@ -481,10 +687,10 @@ class VLLMLLMClient(LLMClient):
 
         Returns:
         -------
-        - tuple[str, object]:
+        - tuple[str, SimpleNamespace]:
             A tuple containing:
                 - The model's generated response (str).
-                - A simple usage object with estimated token counts (dict).
+                - A simple usage object with estimated token counts (SimpleNamespace).
 
         Example:
         -------
@@ -542,6 +748,8 @@ def get_llm_client(
         The name of the language model provider. Supported values are:
             - 'azure': For Azure OpenAI models.
             - 'openai': For standard OpenAI models.
+            - 'anthropic': For Anthropic Claude models.
+            - 'gemini': For Google Gemini models.
             - 'together': For Together AI models.
             - 'vllm': For open-source models using vLLM.
 
@@ -555,6 +763,12 @@ def get_llm_client(
 
         For **OpenAI**:
             - 'api_key':       OpenAI API key (e.g., from OPENAI_API_KEY environment variable).
+
+        For **Anthropic**:
+            - 'api_key':       Anthropic API key (e.g., from ANTHROPIC_API_KEY environment variable).
+
+        For **Gemini**:
+            - 'api_key':       Google Gemini API key (e.g., from GEMINI_API_KEY environment variable).
 
         For **Together AI**:
             - 'api_key':       Together AI API key.
@@ -575,6 +789,8 @@ def get_llm_client(
         An instance of one of the following, depending on provider:
             - AzureOpenAILLMClient
             - OpenAILLMClient (standard OpenAI)
+            - AnthropicLLMClient
+            - GeminiLLMClient
             - TogetherLLMClient
             - VLLMLLMClient
 
@@ -593,6 +809,10 @@ def get_llm_client(
         )
     elif provider == "openai":
         return OpenAILLMClient(api_key=config["api_key"])
+    elif provider == "anthropic":
+        return AnthropicLLMClient(api_key=config["api_key"])
+    elif provider == "gemini":
+        return GeminiLLMClient(api_key=config["api_key"])
     elif provider == "together":
         return TogetherLLMClient(api_key=config["api_key"])
     elif provider == "vllm":

@@ -28,6 +28,10 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
         # no special endpoint or api_version.
         # But you could add more keys if needed (org ID, etc.).
     },
+    "anthropic": {
+        "api_key": os.getenv("ANTHROPIC_API_KEY"),
+        # For Anthropic, we just need the API key
+    },
     "together": {
         "api_key": os.getenv("TOGETHER_API_KEY"),
     },
@@ -64,6 +68,9 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
         # Don't try to fetch a specific revision when using local models
         "revision": os.getenv("VLLM_REVISION", None),
     },
+    "gemini": {
+        "api_key": os.getenv("GEMINI_API_KEY"),
+    },
 }
 
 
@@ -71,11 +78,30 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
 # The prices are in dollars per token, where 'prompt' is the cost of input tokens
 # and 'completion' is the cost of output tokens.
 MODEL_PRICES: Dict[str, Dict[str, float]] = {
+    # OpenAI models
     "gpt-4o": {"prompt": 0.0025, "completion": 0.01},  # Pricing for GPT-4o model.
     "gpt-4o-mini": {
         "prompt": 0.00015,
         "completion": 0.0006,
     },  # Pricing for GPT-4o-mini model.
+    # Anthropic models
+    "claude-3-7-sonnet-20250219": {
+        "prompt": 0.0030,
+        "completion": 0.0150,
+    },
+    "claude-3-5-haiku-20241022": {
+        "prompt": 0.0008,
+        "completion": 0.0040,
+    },
+    # Gemini models (example pricing - check Google AI Studio for current prices)
+    "gemini-2.0-flash-001": {
+        "prompt": 0.00005,  # Example: $0.50 per million input tokens
+        "completion": 0.0001,  # Example: $1.00 per million output tokens
+    },
+    "gemini-2.5-pro-preview-03-25": {
+        "prompt": 0.00005,  # Example: $0.50 per million input tokens
+        "completion": 0.0001,  # Example: $1.00 per million output tokens
+    },
 }
 
 # NOTE:
@@ -85,3 +111,4 @@ MODEL_PRICES: Dict[str, Dict[str, float]] = {
 #   AZURE_OPENAI_ENDPOINT=...
 #   AZURE_API_VERSION=...
 #   OPENAI_API_KEY=...
+#   ANTHROPIC_API_KEY=...

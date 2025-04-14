@@ -30,7 +30,14 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             )
             return None
 
-        provider_options = ["Select Provider", "OpenAI", "Together", "Azure"]
+        provider_options = [
+            "Select Provider",
+            "OpenAI",
+            "Anthropic",
+            "Gemini",
+            "Together",
+            "Azure",
+        ]
         selected_provider_display = st.selectbox(
             "Select LLM Provider:", provider_options, key="llm_provider_select"
         )
@@ -39,7 +46,13 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             st.info("ℹ️ Please select a provider to continue.")
             return None
 
-        provider_map = {"OpenAI": "openai", "Together": "together", "Azure": "azure"}
+        provider_map = {
+            "OpenAI": "openai",
+            "Anthropic": "anthropic",
+            "Gemini": "gemini",
+            "Together": "together",
+            "Azure": "azure",
+        }
         internal_provider = provider_map[selected_provider_display]
 
         # Check config for an existing API key
@@ -52,6 +65,8 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             st.sidebar.subheader("API Key Configuration")
             api_key_placeholder = {
                 "openai": "sk-...",
+                "anthropic": "sk-ant-...",
+                "gemini": "your-gemini-api-key",
                 "together": "together-...",
                 "azure": "azure-...",
             }.get(internal_provider, "Enter API Key")
@@ -84,6 +99,10 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
         # Select model
         if selected_provider_display == "OpenAI":
             model_options = ["gpt-4o", "gpt-4o-mini"]
+        elif selected_provider_display == "Anthropic":
+            model_options = ["claude-3-7-sonnet-20250219", "claude-3-5-haiku-20241022"]
+        elif selected_provider_display == "Gemini":
+            model_options = ["gemini-2.0-flash-001", "gemini-2.5-pro-preview-03-25"]
         elif selected_provider_display == "Together":
             model_options = ["gpt-neoxt-chat-20B"]
         else:  # Azure
