@@ -69,7 +69,7 @@ class QualitativeAnalysisApp:
             """
             **LLM4Humanities** helps you analyze qualitative datasets 
             using Large Language Models.
-            You will need a dataset to analyse, a codebook, and a valid API key (OpenAi or Together).
+            You will need a dataset to analyse, a codebook, and a valid API key (OpenAi, Anthropic, Google Gemini or TogetherAI).
             """,
             unsafe_allow_html=True,
         )
