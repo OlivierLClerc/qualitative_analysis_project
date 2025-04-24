@@ -6,7 +6,7 @@ from .data_processing import (
     select_and_rename_columns,
     load_results_from_csv,
 )
-from .evaluation import (
+from .metrics import (
     compute_cohens_kappa,
     compute_all_kappas,
     plot_confusion_matrices,
@@ -31,7 +31,12 @@ from .parsing import (
 from .prompt_construction import build_data_format_description, construct_prompt
 from .cost_estimation import openai_api_calculate_cost
 from .logging import calculate_and_log
-from .alt_test import run_alt_test_general
+from .metrics import run_alt_test_general
+from .scenario_runner import run_scenarios
+from .metrics import compute_detailed_kappa_metrics
+from .metrics.classification import (
+    compute_classification_metrics_from_results as compute_metrics_from_results,
+)
 
 __all__ = [
     "load_data",
@@ -58,4 +63,7 @@ __all__ = [
     "load_results_from_csv",
     "calculate_and_log",
     "run_alt_test_general",
+    "run_scenarios",
+    "compute_metrics_from_results",
+    "compute_detailed_kappa_metrics",
 ]

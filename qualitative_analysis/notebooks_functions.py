@@ -543,7 +543,7 @@ def process_general_verbatims(
     llm_client,
     model_name: str,
     prompt_template: str,
-    prefix: Optional[str] = None,
+    label_field: Optional[str] = None,
     temperature: float = 0.0,
     json_output: bool = False,
     selected_fields: Optional[List[str]] = None,
@@ -580,10 +580,11 @@ def process_general_verbatims(
         Must contain `"{verbatim_text}"` as a placeholder. Example:
           "You are an assistant...\n\nInput:\n{verbatim_text}\n\nRespond with 0 or 1."
 
-    prefix : Optional[str], default=None
-        If `json_output=False`, indicates the substring or prefix used by
-        `extract_code_from_response` to locate the classification code
-        within the LLM response.
+    label_field : Optional[str], default=None
+        The field name to use as the source for the "ModelPrediction" column.
+        If `json_output=True`, this is the field name in the JSON response.
+        If `json_output=False`, this is the prefix used by `extract_code_from_response`
+        to locate the classification code within the LLM response.
 
     temperature : float, default=0.0
         Model generation temperature. Higher values produce more creative outputs.
@@ -668,19 +669,27 @@ def process_general_verbatims(
 
                 # JSON mode
                 if json_output:
-                    assert selected_fields is not None  # needed for mypy
-                    # parse_llm_response is a helper you have elsewhere
-                    parsed = parse_llm_response(
-                        response_text, selected_fields=selected_fields
+                    # Parse the JSON response to extract all fields
+                    parsed_fields = parse_llm_response(
+                        response_text,
+                        selected_fields=None,  # Pass None to extract all fields
                     )
-                    # By default we assume "Validity" if prefix is not provided
-                    key_for_label = prefix if prefix is not None else "Validity"
-                    label = parsed.get(key_for_label, None)
+
+                    # Get the label for majority voting
+                    # By default we assume "Classification" if label_field is not provided
+                    key_for_label = (
+                        label_field if label_field is not None else "Classification"
+                    )
+                    label = parsed_fields.get(key_for_label, None)
                 else:
                     # Classic prefix-based mode
                     # extract_code_from_response is a helper you have elsewhere
-                    label = extract_code_from_response(response_text, prefix=prefix)
+                    label = extract_code_from_response(
+                        response_text, prefix=label_field
+                    )
+                    parsed_fields = None
 
+                # Store the label for majority voting
                 completion_labels.append(label)
 
                 # Accumulate usage cost
@@ -692,8 +701,19 @@ def process_general_verbatims(
             # Apply majority-vote on the n_completions
             final_label = majority_vote(completion_labels)
 
-            # Record the final label in the results
-            results.append({"Verbatim": verbatim_text, "Label": final_label})
+            # Record the results
+            if json_output and parsed_fields:
+                # Include all parsed fields in the results
+                result_row = {"Verbatim": verbatim_text, "Label": final_label}
+
+                # Add all fields from the parsed JSON response
+                for field, value in parsed_fields.items():
+                    result_row[field] = value
+
+                results.append(result_row)
+            else:
+                # Just include the label for non-JSON output
+                results.append({"Verbatim": verbatim_text, "Label": final_label})
 
             # Add cost info for this verbatim
             verbatim_costs.append(

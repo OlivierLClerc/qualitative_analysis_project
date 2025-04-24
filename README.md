@@ -5,9 +5,6 @@ A **Python-based toolkit** for qualitative data analysis using **Large Language 
 This toolkit provides a method for automatic annotation of qualitative data.
 You will find two web interfaces that require no coding skills to help you perform manual and automatic annotations of your data.
 
-The idea is that you can use a Large Language Model to automatically annotate your data. 
-Annotation is a time-consuming task
-
 First, you will need to manually annotate a subset of data (using the Manual Annotator app).
 Then, you will be able to evaluate metrics between human and LLM annotations to determine if you can safely annotate the rest of your data using the automation annotation tool (using the LLM4Humanities app).
 

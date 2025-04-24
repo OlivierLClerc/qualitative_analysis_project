@@ -187,7 +187,7 @@ def call_llm2_for_improvement(
     Calls a secondary LLM (LLM2) to generate an improved prompt along with a summary of changes.
 
     If json_output is True and a response_template is provided, the function first removes the
-    response_template from current_prompt (so that it isn’t iteratively modified) and then later
+    response_template from current_prompt (so that it isn't iteratively modified) and then later
     re-appends it to the new prompt.
 
     Returns a dictionary with keys "new_prompt" and "changes" if successful.
@@ -346,13 +346,18 @@ def run_iterative_prompt_improvement(
     # Check if validation data is provided
     use_validation = val_data is not None and not val_data.empty
 
+    # Make explicit copies of DataFrames to avoid SettingWithCopyWarning
+    train_data = train_data.copy()
+    if use_validation and val_data is not None:
+        val_data = val_data.copy()
+
     # Compute majority vote as ground truth using the provided annotation columns.
     if annotation_columns and len(annotation_columns) > 0:
-        train_data["GroundTruth"] = train_data.apply(
+        train_data.loc[:, "GroundTruth"] = train_data.apply(
             lambda row: row[annotation_columns].value_counts().idxmax(), axis=1
         )
         if use_validation and val_data is not None:
-            val_data["GroundTruth"] = val_data.apply(
+            val_data.loc[:, "GroundTruth"] = val_data.apply(
                 lambda row: row[annotation_columns].value_counts().idxmax(), axis=1
             )
         ground_truth_column = "GroundTruth"
@@ -392,7 +397,7 @@ def run_iterative_prompt_improvement(
             llm_client=llm1_client,
             model_name=model_name_1,
             prompt_template=full_prompt,
-            prefix=prefix_llm1,
+            label_field=prefix_llm1,
             temperature=temperature_llm1,
             verbose=verbose,
             json_output=json_output,
@@ -404,8 +409,8 @@ def run_iterative_prompt_improvement(
         train_cost = train_totals["total_cost"]
         train_time_s = end_time - start_time
 
-        # Convert labels based on the specified label_type
-        train_data["ModelPrediction"] = train_pred_df["Label"].values
+        # Convert labels based on the specified label_type - use .loc to avoid SettingWithCopyWarning
+        train_data.loc[:, "ModelPrediction"] = train_pred_df["Label"].values
 
         # Apply label type conversion to ground truth and predictions
         y_true_train = convert_labels(
@@ -454,7 +459,7 @@ def run_iterative_prompt_improvement(
                 llm_client=llm1_client,
                 model_name=model_name_1,
                 prompt_template=full_prompt,
-                prefix=prefix_llm1,
+                label_field=prefix_llm1,
                 temperature=temperature_llm1,
                 verbose=False,
                 json_output=json_output,
@@ -466,7 +471,8 @@ def run_iterative_prompt_improvement(
             val_cost = val_totals["total_cost"]
             val_time_s = end_time_val - start_time_val
 
-            val_data["ModelPrediction"] = val_pred_df["Label"].values
+            # Use .loc to avoid SettingWithCopyWarning
+            val_data.loc[:, "ModelPrediction"] = val_pred_df["Label"].values
 
             # Apply label type conversion to ground truth and predictions for validation data
             y_true_val = convert_labels(

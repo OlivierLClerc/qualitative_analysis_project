@@ -32,7 +32,9 @@ import pandas as pd
 from typing import Optional, Dict
 
 
-def parse_llm_response(evaluation_text: str, selected_fields: list) -> dict:
+def parse_llm_response(
+    evaluation_text: str, selected_fields: Optional[list] = None
+) -> dict:
     """
     Parses a language model's response to extract specified fields from a JSON object.
 
@@ -114,12 +116,19 @@ def parse_llm_response(evaluation_text: str, selected_fields: list) -> dict:
             if parsed["Validity"] not in (0, 1):
                 raise ValueError(f"Invalid Validity: {parsed['Validity']}")
 
-        return {field: parsed.get(field) for field in selected_fields}
+        # If selected_fields is None or empty, return all fields from the parsed JSON
+        if not selected_fields:
+            return parsed
+        else:
+            return {field: parsed.get(field) for field in selected_fields}
 
     except Exception as e:
         print(f"Parsing Error: {str(e)}")
         print(f"Cleaned JSON Attempt: {json_str}")
-        return {field: None for field in selected_fields}
+        if not selected_fields:
+            return {}  # Return empty dict if no selected_fields
+        else:
+            return {field: None for field in selected_fields}
 
 
 def extract_code_from_response(

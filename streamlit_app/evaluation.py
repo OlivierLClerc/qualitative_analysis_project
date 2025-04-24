@@ -6,8 +6,11 @@ import streamlit as st
 import pandas as pd
 from typing import Any
 
-from qualitative_analysis import compute_all_kappas, run_alt_test_general
-from qualitative_analysis.evaluation import compute_classification_metrics
+from qualitative_analysis.metrics import (
+    compute_all_kappas,
+    run_alt_test_general,
+    compute_classification_metrics,
+)
 
 
 def compare_with_external_judgments(app_instance: Any) -> None:
