@@ -19,3 +19,4 @@ torchvision==0.20.1
 sentencepiece==0.2.0
 sacremoses==0.1.1
 openpyxl==3.1.5
+krippendorff==0.8.1
