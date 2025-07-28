@@ -32,7 +32,10 @@ def format_value_for_prompt(value: Any) -> Any:
 
 
 def _process_data_with_llm(
-    app_instance: Any, data_to_process: pd.DataFrame, debug_mode: bool = False
+    app_instance: Any,
+    data_to_process: pd.DataFrame,
+    debug_mode: bool = False,
+    run_number: int = 1,
 ) -> pd.DataFrame:
     """
     Helper function that processes data with LLM and returns results DataFrame.
@@ -42,6 +45,7 @@ def _process_data_with_llm(
         app_instance: The QualitativeAnalysisApp instance
         data_to_process: DataFrame containing the rows to process
         debug_mode: Whether to show constructed prompts for debugging
+        run_number: The current run number (for multi-run analysis)
 
     Returns:
         DataFrame containing the processed results
@@ -189,6 +193,8 @@ def _process_data_with_llm(
 
             # Combine everything: original row data, LLM parsed fields, annotation columns
             combined = {**row.to_dict(), **parsed, **annotation_dict}
+            # Add run number for multi-run analysis
+            combined["run"] = run_number
             results.append(combined)
 
         except Exception as e:
@@ -237,6 +243,44 @@ def _process_data_with_llm(
                 )
 
     return results_df
+
+
+def _process_multiple_runs(
+    app_instance: Any,
+    data_to_process: pd.DataFrame,
+    n_runs: int,
+    debug_mode: bool = False,
+    is_remaining_data: bool = False,
+) -> pd.DataFrame:
+    """
+    Process data with LLM across multiple runs for consistency analysis.
+
+    Args:
+        app_instance: The QualitativeAnalysisApp instance
+        data_to_process: DataFrame containing the rows to process
+        n_runs: Number of runs to execute
+        debug_mode: Whether to show constructed prompts for debugging
+        is_remaining_data: Whether this is for remaining data (Step 8)
+
+    Returns:
+        DataFrame containing results from all runs
+    """
+    all_results = []
+
+    for run in range(1, n_runs + 1):
+        st.info(f"Processing run {run} of {n_runs}...")
+
+        # Process the data for this run
+        run_results_df = _process_data_with_llm(
+            app_instance, data_to_process, debug_mode, run_number=run
+        )
+
+        all_results.append(run_results_df)
+
+    # Combine all runs into a single DataFrame
+    combined_results_df = pd.concat(all_results, ignore_index=True)
+
+    return combined_results_df
 
 
 def run_analysis(
@@ -302,6 +346,77 @@ def run_analysis(
                     st.warning("No results from Step 6. Please run Step 6 first.")
                     return None
 
+            # ------------------------------------------------------------------
+            # RUN SELECTION FOR STEP 8
+            # ------------------------------------------------------------------
+            # Check if we have multiple runs from Step 6
+            if "run" in previous_results_df.columns:
+                available_runs = sorted(previous_results_df["run"].unique())
+
+                if len(available_runs) > 1:
+                    st.subheader("Select Run for Remaining Data Analysis")
+                    st.markdown(
+                        """
+                        Since you ran the analysis using multiple runs on the 
+                        manually annotated data, you now need to choose which run's predictions you want to
+                        keep for the already processed data.
+                        
+                        This will not impact the results of the remaining data analysis,
+                        as the remaining data will be processed using the same model and configuration.
+                        
+                        It will only affect the results of the already processed data,
+                        so you can choose the run that presented the best results.
+                        """
+                    )
+
+                    # Create run summary for user decision
+                    run_summaries = []
+                    for run_id in available_runs:
+                        run_data = previous_results_df[
+                            previous_results_df["run"] == run_id
+                        ]
+                        run_summaries.append(
+                            {"Run": f"Run {run_id}", "Samples": len(run_data)}
+                        )
+
+                    # Let user select which run to use
+                    col1, col2 = st.columns([2, 1])
+
+                    with col1:
+                        selected_run = st.selectbox(
+                            "Choose which run to use for remaining data annotation:",
+                            options=available_runs,
+                            format_func=lambda x: f"Run {x}",
+                            key="step8_selected_run",
+                        )
+
+                    with col2:
+                        # Show some basic info about the selected run
+                        selected_run_data = previous_results_df[
+                            previous_results_df["run"] == selected_run
+                        ]
+                        st.metric("Selected Run Samples", len(selected_run_data))
+
+                    # Filter previous results to only include the selected run
+                    previous_results_df = selected_run_data.copy()
+
+                    st.success(
+                        f"✅ **Run {selected_run} selected** for remaining data annotation"
+                    )
+
+                    # Add some spacing before the next section
+                    st.markdown("---")
+                else:
+                    # Only one run available
+                    st.info(
+                        f"Using results from the single run in Step 6 ({len(previous_results_df)} samples)"
+                    )
+            else:
+                # No run column (legacy data or single run without run tracking)
+                st.info(
+                    f"Using results from Step 6 ({len(previous_results_df)} samples)"
+                )
+
             # Get the original full dataset (before annotation filtering)
             original_data = app_instance.original_data
             if original_data is None:
@@ -311,7 +426,7 @@ def run_analysis(
                     "Original unfiltered data not found. Using filtered data instead."
                 )
 
-            # Identify rows that have been processed in Step 6
+            # Identify rows that have been processed in Step 6 (now filtered to selected run)
             processed_indices = set(previous_results_df.index)
 
             # Get all indices from the original data
@@ -489,9 +604,15 @@ def run_analysis(
                 # Prepare data to process
                 data_to_process = data_subset.head(num_rows)
 
-                # Process the data using the shared helper function
+                # Get the selected run number for consistency (default to 1 if not available)
+                selected_run_number = st.session_state.get("step8_selected_run", 1)
+
+                # Process the data using the shared helper function with the selected run number
                 results_df = _process_data_with_llm(
-                    app_instance, data_to_process, debug_mode
+                    app_instance,
+                    data_to_process,
+                    debug_mode,
+                    run_number=selected_run_number,
                 )
 
                 # For Step 8: Combine with previous results
@@ -618,6 +739,28 @@ def run_analysis(
                 )
 
             # ------------------------------------------------------------------
+            # Multiple runs configuration
+            # ------------------------------------------------------------------
+            st.subheader("Multiple Runs Configuration")
+            st.markdown(
+                """
+                **Why multiple runs?** Since LLM outputs can vary between runs, running the same analysis 
+                multiple times helps assess the consistency and reliability of the model's predictions. 
+                This is especially important for research purposes where you want to report robust metrics.
+                """
+            )
+
+            n_runs = st.number_input(
+                "Number of runs:",
+                min_value=1,
+                max_value=10,
+                value=3,
+                step=1,
+                key="n_runs_input",
+                help="Number of times to run the analysis on the same data. More runs provide better consistency estimates but increase cost.",
+            )
+
+            # ------------------------------------------------------------------
             # Cost Estimation button (optional, for one entry)
             # ------------------------------------------------------------------
             button_key = "estimate_price_button"
@@ -665,13 +808,13 @@ def run_analysis(
                     cost_for_one = openai_api_calculate_cost(
                         usage, app_instance.selected_model
                     )
-                    total_cost_estimate = cost_for_one * num_rows
+                    total_cost_estimate = cost_for_one * num_rows * n_runs
 
                     st.info(
                         f"Estimated cost for processing one entry: ${cost_for_one:.4f}"
                     )
                     st.info(
-                        f"Estimated total cost for {num_rows} entries: ${total_cost_estimate:.4f}"
+                        f"Estimated cost for {num_rows} entries × {n_runs} runs: ${total_cost_estimate:.4f}"
                     )
 
                     st.session_state["cost_for_one"] = cost_for_one
@@ -702,10 +845,15 @@ def run_analysis(
                 # Prepare data to process
                 data_to_process = data_subset.head(num_rows)
 
-                # Process the data using the shared helper function
-                results_df = _process_data_with_llm(
-                    app_instance, data_to_process, debug_mode
-                )
+                # Process the data using multiple runs if specified
+                if n_runs > 1:
+                    results_df = _process_multiple_runs(
+                        app_instance, data_to_process, n_runs, debug_mode
+                    )
+                else:
+                    results_df = _process_data_with_llm(
+                        app_instance, data_to_process, debug_mode, run_number=1
+                    )
 
                 # For Step 6: Just store the results
                 app_instance.results = results_df.to_dict("records")
@@ -714,10 +862,53 @@ def run_analysis(
                 st.success("Analysis completed!")
 
                 # ------------------------------------------------------------------
-                # Store final DataFrame in session and display a preview
+                # Store final DataFrame in session and mark analysis as completed
                 # ------------------------------------------------------------------
                 st.session_state["results_df"] = results_df
-                st.dataframe(results_df.head())
+                st.session_state["analysis_completed"] = True
+                st.session_state["n_runs_used"] = n_runs
+                st.session_state["entries_processed"] = len(data_to_process)
+
+            # ------------------------------------------------------------------
+            # Display results (outside button block to persist across reruns)
+            # ------------------------------------------------------------------
+            if st.session_state.get("analysis_completed", False):
+                results_df = st.session_state["results_df"]
+                n_runs_used = st.session_state.get("n_runs_used", 1)
+                entries_processed = st.session_state.get("entries_processed", 0)
+
+                # Display results with run information
+                if n_runs_used > 1:
+                    st.subheader("Multi-Run Analysis Results")
+
+                    # Show summary statistics
+                    st.write(f"**Total entries processed:** {entries_processed}")
+                    st.write(f"**Number of runs:** {n_runs_used}")
+                    st.write(f"**Total result rows:** {len(results_df)}")
+
+                    # Option to view results by run or aggregated
+                    view_option = st.radio(
+                        "View results:",
+                        ["Aggregated (all runs)", "By individual run"],
+                        key="results_view_option",
+                    )
+
+                    if view_option == "By individual run":
+                        selected_run = st.selectbox(
+                            "Select run to view:",
+                            options=sorted(results_df["run"].unique()),
+                            key="selected_run_view",
+                        )
+                        display_df = results_df[results_df["run"] == selected_run]
+                        st.write(f"**Results for Run {selected_run}:**")
+                    else:
+                        display_df = results_df
+                        st.write("**All Results (All Runs):**")
+
+                    st.dataframe(display_df.head())
+                else:
+                    st.subheader("Analysis Results")
+                    st.dataframe(results_df.head())
 
                 # Optional: Provide a download button for results
                 filename_input = st.text_input(

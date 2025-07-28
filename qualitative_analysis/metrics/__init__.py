@@ -20,6 +20,11 @@ from qualitative_analysis.metrics.kappa import (
     compute_kappa_metrics,
 )
 
+from qualitative_analysis.metrics.krippendorff import (
+    compute_krippendorff_non_inferiority,
+    print_non_inferiority_results,
+)
+
 from qualitative_analysis.metrics.classification import (
     ClassMetrics,
     GlobalMetrics,
@@ -53,6 +58,9 @@ __all__ = [
     "compute_all_kappas",
     "compute_detailed_kappa_metrics",
     "compute_kappa_metrics",
+    # Krippendorff metrics
+    "compute_krippendorff_non_inferiority",
+    "print_non_inferiority_results",
     # Classification metrics
     "ClassMetrics",
     "GlobalMetrics",
