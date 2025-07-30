@@ -132,7 +132,9 @@ class OpenAILLMClient(LLMClient):
         # You may optionally set `openai.organization` if needed:
         # openai.organization = os.getenv("OPENAI_ORGANIZATION")
 
-    def get_response(self, prompt: str, model: str, **kwargs) -> tuple[str, dict]:
+    def get_response(
+        self, prompt: str, model: str, **kwargs
+    ) -> tuple[str, SimpleNamespace]:
         """
         Sends a prompt to the standard OpenAI model and retrieves the response.
 
@@ -152,10 +154,10 @@ class OpenAILLMClient(LLMClient):
 
         Returns
         -------
-        tuple[str, object]
+        tuple[str, SimpleNamespace]
             A tuple containing:
                 - The generated response text (str).
-                - The usage object detailing token usage (object), if any.
+                - The usage object detailing token usage (SimpleNamespace).
 
         Raises
         ------
@@ -186,25 +188,25 @@ class OpenAILLMClient(LLMClient):
 
         content = response.choices[0].message.content
 
-        # Convert usage object to a dictionary for consistency
+        # Convert usage object to a SimpleNamespace for consistency with other clients
         if response.usage:
-            usage_dict = {
-                "prompt_tokens": response.usage.prompt_tokens,
-                "completion_tokens": response.usage.completion_tokens,
-                "total_tokens": response.usage.total_tokens,
-            }
+            usage_obj = SimpleNamespace(
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens,
+            )
         else:
             # Fallback if usage is not available
-            usage_dict = {
-                "prompt_tokens": len(prompt.split()),  # Very rough estimate
-                "completion_tokens": (
+            usage_obj = SimpleNamespace(
+                prompt_tokens=len(prompt.split()),  # Very rough estimate
+                completion_tokens=(
                     len(content.split()) if content else 0
                 ),  # Very rough estimate
-                "total_tokens": len(prompt.split())
+                total_tokens=len(prompt.split())
                 + (len(content.split()) if content else 0),
-            }
+            )
 
-        return (content.strip() if content else ""), usage_dict
+        return (content.strip() if content else ""), usage_obj
 
 
 class AzureOpenAILLMClient(LLMClient):
