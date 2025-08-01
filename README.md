@@ -74,11 +74,14 @@ Click the link below to run the **web app**:
 
 Click the badge below to run the notebooks directly in **Google Colab**:
 
-Starter notebook:
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/notebook_multiclass_colab.ipynb)
+Binary classification notebook:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/binary_case_colab.ipynb)
 
-Sequential analysis notebook:
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/notebook_sequential_binary_colab.ipynb)
+Multiclass classification notebook:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/multiclass_case_colab.ipynb)
+
+Complex classification notebook:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OlivierLClerc/qualitative_analysis_project/blob/master/notebooks/complex_case_colab.ipynb)
 
 ## **Run Locally (Full Control)**
 
