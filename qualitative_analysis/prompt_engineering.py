@@ -29,13 +29,13 @@ import pandas as pd
 from sklearn.metrics import accuracy_score
 from typing import List, Dict, Any, Optional, Tuple
 from qualitative_analysis.model_interaction import get_llm_client
-from qualitative_analysis.alt_test import run_alt_test_general
 from qualitative_analysis.notebooks_functions import process_general_verbatims
-from qualitative_analysis.evaluation import (
+import qualitative_analysis.config as config
+from .metrics import (
     compute_cohens_kappa,
+    run_alt_test_general,
     compute_human_accuracies,
 )
-import qualitative_analysis.config as config
 
 
 def convert_labels(labels: List[Any], label_type: str = "auto") -> List[Any]:

@@ -8,10 +8,13 @@ import io
 from typing import Any, Optional
 
 from qualitative_analysis import (
-    build_data_format_description,
-    construct_prompt,
     parse_llm_response,
     openai_api_calculate_cost,
+)
+
+from streamlit_app.prompt_construction import (
+    build_data_format_description,
+    construct_prompt,
 )
 
 
