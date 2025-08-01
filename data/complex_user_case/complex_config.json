@@ -1,0 +1,67 @@
+{
+    "selected_columns": [
+        "key",
+        "reference",
+        "IDENTIFY",
+        "GUESS",
+        "SEEK",
+        "ASSESS",
+        "assess_cues",
+        "Identify_validity",
+        "Guess_validity",
+        "Seek_validity",
+        "Assess_validity",
+        "mechanical_rating"
+    ],
+    "column_renames": {
+        "key": "key",
+        "reference": "reference",
+        "IDENTIFY": "IDENTIFY",
+        "GUESS": "GUESS",
+        "SEEK": "SEEK",
+        "ASSESS": "ASSESS",
+        "assess_cues": "assess_cues",
+        "Identify_validity": "Identify_validity",
+        "Guess_validity": "Guess_validity",
+        "Seek_validity": "Seek_validity",
+        "Assess_validity": "Assess_validity",
+        "mechanical_rating": "mechanical_rating"
+    },
+    "column_descriptions": {
+        "key": "Unique identifiant",
+        "reference": "The reference text that participants must read beforehand. Their responses for the different steps must be semantically related to this text (same topic), but the answer to the question they are asking should not be found in the text.",
+        "IDENTIFY": "Response for the IDENTIFY step",
+        "GUESS": "Response for the GUESS step",
+        "SEEK": "Response for the SEEK step",
+        "ASSESS": "Response for the ASSESS step",
+        "assess_cues": "Possible answers that were proposed in the ASSESS step",
+        "Identify_validity": "If a number is already there (whatever the number), the step is valid",
+        "Guess_validity": "If a number is already there (whatever the number), the step is valid",
+        "Seek_validity": "If a number is already there (whatever the number), the step is valid",
+        "Assess_validity": "If a number is already there (whatever the number), the step is valid",
+        "mechanical_rating": "If a number is already there, you should use that as the final label (it over-rides any other logic in the codebook)"
+    },
+    "codebook": "If a numeric value is present in the mechanical_rating column, copy it as the correct label.\nIf it\u2019s empty, you\u2019ll decide an overall cycle validity (0 or 1) based on the following codebook:\n\nA cycle is considered valid if you can answer \"yes\" to all the following questions:\n\n- Identify Step: Does the Identify step indicate a topic of interest?\n- Guess Step: Does the Guess step suggest a possible explanation?\n- Seek Step: Is the Seek step formulated as a question?\n- Assess Step: Does it identify a possible answer or state that no answer where found (\"no\" is ok) ?\n- Consistency: Are the Identify, Guess, and Seek steps related to the same question?\n- Reference Link: Are the Identify, Guess, and Seek steps related to the topic of the reference text?\n- Seek Question Originality: Is the answer to the Seek question not found (even vaguely) in the reference text?\n- Resolving Answer: If the Assess step state an answer, does it answer to the question in the Seek step ?\n- Valid Answer: If the ASSESS step indicates an answer was found, is the answer indeed in the assess_cues? \u2192 If not, then no answer was actually found, and the cycle is not valid.\n- Valid No: If the ASSESS step indicates no answer was found, confirm that the answer to the SEEK question is not actually present in the assess_cues. \u2192 If the participant claims no answer was found, but it is in fact in assess_cues, the cycle is not valid.\n\nIdentify_validity, Guess_validity, Seek_validity, Assess_validity:\nIf one of those column already shows a numeric value (whatever the value), accept the step for this question without re-checking that step\u2019s validity.\n\nIf all these criteria are met, the cycle is valid.\nValidity is expressed as:\n1: Valid cycle\n0: Invalid cycle\n\nMinor spelling, grammatical, or phrasing errors should not be penalized as long as the intent of the entry is clear and aligns with the inclusion criteria. Focus on the content and purpose of the entry rather than linguistic perfection.",
+    "examples": "Example 1\nKey:\nAA25I4\n\nReference:\n\"Rain forms when water evaporates into the atmosphere, condenses into droplets, and falls due to gravity.\"\n\nCycle Steps:\nIDENTIFY: \"I don\u2019t understand how rain forms.\"\nGUESS: \"Maybe rain condenses in the sky, forming droplets.\"\nSEEK: \"How does rain form?\"\nASSESS: \"No\"\nAssess Cues:\n\nValidity Columns:\nIdentify_validity: NA\nGuess_validity: 2\nSeek_validity: NA\nAssess_validity: NA\nMechanical_rating: NA\n\nReasoning\nSince the mechanical_rating column is empty, the validity must be determined using the codebook.\n\nReasoning:\nIdentify step: Does the Identify step indicate a topic of interest?\nYes: The topic is the formation of rain.\n\nGuess step: A numeric value is present in the Guess_validity column, so no further validation is needed.\nYes: It proposes condensation as the mechanism for rain formation.\n\nSeek step: Is the Seek step formulated as a question?\nYes: It is explicitly phrased as a question with an interrogative structure.\n\nAssess step: Does it identify a possible answer or state that no answer was found (\"No\" is acceptable)?\nYes: It states that the answer to the question was not found, which is a valid response in the Assess step.\n\nConsistency: Are the Identify, Guess, and Seek steps related to the same topic?\nYes: They all pertain to the process of rain formation.\n\nReference Link: Are the Identify, Guess, and Seek steps related to the reference text?\nYes: The text discusses rain and explains its formation.\n\nSeek Question Originality: Is the answer to the Seek question absent (even vaguely) from the reference text?\nNo: The answer is explicitly provided in the reference text.\n\nResolving Answer:\nNot applicable (the answer was not found).\n\nValid Answer:\nNot applicable (the answer was not found).\n\nValid No: Is the answer to the SEEK question absent from the assess_cues?\nYes: The answer to the SEEK question is not in assess_cues, so the \"No\" is valid.\n\nConclusion\nThe cycle is not valid because the answer to the SEEK question is explicitly present in the reference text.\n\nValidity:\n0\n\n",
+    "selected_fields": [
+        "Reasoning",
+        "Classification"
+    ],
+    "selected_model": "gpt-4o-mini",
+    "annotation_columns": [
+        "Rater_Gaia",
+        "Rater_Chloe",
+        "Rater_Oli"
+    ],
+    "label_column": "Classification",
+    "label_type": "Integer",
+    "text_columns": [
+        "key",
+        "reference",
+        "IDENTIFY",
+        "GUESS",
+        "SEEK",
+        "ASSESS",
+        "assess_cues"
+    ]
+}

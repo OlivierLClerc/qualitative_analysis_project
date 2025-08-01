@@ -1,0 +1,644 @@
+﻿sample_id;split;verbatim;iteration;Rater_Oli;Rater_Gaia;Rater_Chloe;ModelPrediction;Reasoning;run;prompt_name;use_validation_set
+0;train;"Id: bc4_1
+
+Text: A des dizaines de kilometres sous nos pieds, la terre contient une couche quon appelle le manteau. Il fait tellement chaud sur cette couche que les roches deviennent liquides : cest ce qu'on appelle le magma. Le magma est responsable de l'explosion des volcans: c'est ce que les scientifiques appellent aussi une eruption d'un volcan. On dit quun volcan est endormi sil ny a eu aucune eruption dans les 10 000 dernieres annees. Au dela de 10 000 ans, on peut dire que le volcan est eteint.
+
+Identify: le magma
+
+Guess: La temperature du magma depasse les 500c
+
+Seek: Quelle est la temperature du magma?
+
+Assess: La temperature du magma atteint les 1000c
+
+assess Cues: {""1"":""La terre contient 7 couches"",""2"":""La température du magma atteint les 1000°C"",""3"":""La température à l'éruption d'un volcan est à 700°C""}
+
+Identify Validity: <NA>
+
+Guess Validity: 2
+
+Seek Validity: 2
+
+Assess Validity: 2
+
+mechanical Rating: <NA>";1;1;1;1;1;The entry meets the criteria for a valid cycle. The Identify step indicates a topic of interest, 'le magma', which is related to the reference text about magma and volcanoes. The Guess step suggests a possible explanation, 'La temperature du magma depasse les 500c', which is a plausible guess about the temperature of magma. The Seek step is formulated as a question, 'Quelle est la temperature du magma?', which is consistent with the Identify and Guess steps. The Assess step provides a possible answer, 'La temperature du magma atteint les 1000c', which is found in the assess_cues, indicating that an answer was indeed found. The Identify, Guess, and Seek steps are related to the same question and are linked to the topic of the reference text. The Seek question's answer is not found in the reference text, ensuring originality. The Assess step resolves the Seek question with an answer that is present in the assess_cues, confirming its validity. Additionally, the Guess, Seek, and Assess steps have validity numbers, which means they are accepted without re-checking. Therefore, the cycle is valid.;1;few_shot;False
+1;train;"Id: bc4_6
+
+Text: La religion de la Grece antique comprend plusieurs dieux. Les aventures de ces dieux forment la mythologie grecque, l'une des mythologies les plus developpees de l'histoire antique. D'apres les Grecs, les 12 principaux dieux vivent sur l'Olympe et ont une apparence et un comportement comparables a celui des humains. Les dieux les plus connus sont : Athena, deesse de la guerre, Zeus, roi des dieux et dieu de la foudre. Hera, deesse du mariage. Poseidon, dieu des oceans.
+
+Identify: Une mythologie
+
+Guess: Une mythologie est un ensemble de contes imaginaires
+
+Seek: Qu'est-ce qu'une mythologie
+
+Assess: Une mythologie est un ensemble de legendes lies a une civilisation bien precise
+
+assess Cues: {""1"":""Une mythologie est un ensemble de légendes liées à une civilisation"",""2"":""L'histoire comprend beaucoup de mythologies"",""3"":""L'Olympe est la plus haute montagne de Grèce""}
+
+Identify Validity: 1
+
+Guess Validity: 1
+
+Seek Validity: 1
+
+Assess Validity: 1
+
+mechanical Rating: 1";1;1;1;1;1;The mechanical_rating column contains a numeric value, which is 1. According to the instructions, if a numeric value is present in the mechanical_rating column, it should be copied as the correct label without further evaluation of the cycle's validity.;1;few_shot;False
+2;train;"Id: bc4_7
+
+Text: La Rome antique designe l'histoire de la cite de Rome pendant l'Antiquite. Selon la legende, Rome aurait ete fondee par Romulus qui aurai donne son nom a la ville. Au depart, ce n'etait qu'un groupe de quelques villages, puis l'Empire romain va couvrir une grande partie de l'Europe et entourer toute la mer Mediterranee. La religion romaine comptait de nombreux dieux, inspires en partie des dieux grecs.
+
+Identify: Romulus
+
+Guess: Romulus est un roi de Rome
+
+Seek: Qui et Romulus mythologie a
+
+Assess: Dans la legende Romulus et le premier roi de Rome
+
+assess Cues: {""1"":""Dans la légende, Romulus est le premier roi de Rome"",""2"":""L'Antiquité s'est étendue entre 3200 avant J.C, jusqu'à l'année 476"",""4"":""La Méditerranée touche plusieurs continents""}
+
+Identify Validity: 1
+
+Guess Validity: 1
+
+Seek Validity: 1
+
+Assess Validity: 1
+
+mechanical Rating: 1";1;1;1;1;1;The mechanical_rating column has a numeric value of 1, which overrides any other logic in the codebook. Therefore, the cycle is automatically considered valid without needing to evaluate the individual steps or criteria.;1;few_shot;False
+3;train;"Id: bc4_8
+
+Text: La foret tropicale humide a un climat qui fournit beaucoup d'eau et une temperature elevee toute l'annee. Cela favorise la densite et la croissance permanente des plantes de ces forets.  En Asie, on appelle ce genre de foret 'la jungle'. Elle est parfois appelee foret dense, bien que cette expression signifie seulement que les arbres sont tres proches les uns des autres. Dans les forets tropicales, les arbres formant trois etages de hauteur differentes, sont tres serres et perdent leurs feuilles irregulierement.
+
+Identify: Les plantes de foret tropicales
+
+Guess: Les foret tropicale contiennent tout type de plantes
+
+Seek: Quelle plante peut-on voir dans les forets
+
+Assess: Les foret tropicale sont toujours vertes car il pleut tout le temps
+
+assess Cues: {""4"":""Les forêts tropicales sont toujours vertes car il pleut tout le temps"",""2"":""La température dans les forêts tropicales est entre 30° et 40°C"",""3"":""La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique""}
+
+Identify Validity: 1
+
+Guess Validity: 1
+
+Seek Validity: 1
+
+Assess Validity: 4
+
+mechanical Rating: 0";1;0;0;0;0;The mechanical_rating column has a numeric value of 0, which overrides any other logic in the codebook. Therefore, the cycle is classified as invalid without further evaluation of the individual steps or criteria.;1;few_shot;False
+4;train;"Id: bc5_1
+
+Text: A des dizaines de kilometres sous nos pieds, la terre contient une couche quon appelle le manteau. Il fait tellement chaud sur cette couche que les roches deviennent liquides : cest ce qu'on appelle le magma. Le magma est responsable de l'explosion des volcans: c'est ce que les scientifiques appellent aussi une eruption d'un volcan. On dit quun volcan est endormi sil ny a eu aucune eruption dans les 10 000 dernieres annees. Au dela de 10 000 ans, on peut dire que le volcan est eteint.
+
+Identify: Pourqoi on l'appelle le manteau.
+
+Guess: le magma et une pierre.
+
+Seek: quel et la temperature magma
+
+Assess: 1 000c
+
+assess Cues: {""1"":""La terre contient 7 couches"",""2"":""La température du magma atteint les 1000°C"",""3"":""La température à l'éruption d'un volcan est à 700°C""}
+
+Identify Validity: <NA>
+
+Guess Validity: <NA>
+
+Seek Validity: 2
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;1;The cycle validity is determined by evaluating each step and the overall consistency with the reference text. The Identify step 'Pourqoi on l'appelle le manteau' indicates a topic of interest related to the reference text, which discusses the mantle. The Guess step 'le magma et une pierre' suggests a possible explanation related to the mantle and magma, which is consistent with the reference text. The Seek step 'quel et la temperature magma' is formulated as a question and is related to the topic of the reference text, but the specific temperature of magma is not mentioned in the reference text, ensuring originality. The Assess step '1 000c' provides an answer to the Seek question, and this answer is found in the assess_cues ('La température du magma atteint les 1000°C'), confirming a valid answer was found. The Seek Validity is already marked as valid (2), so we accept this step without re-checking. All steps are consistent with each other and the reference text, and the answer to the Seek question is not found in the reference text, ensuring originality. Therefore, the cycle is valid.;1;few_shot;False
+5;train;"Id: bc5_2
+
+Text: La memoire, cest une fonction de notre cerveau qui nous permet de garder les informations pour ensuite les recuperer et les utiliser. Tables de multiplication, poesies, ... notre cerveau est capable denregistrer et d'organiser enormement dinformations. Il recolte ces informations grace a nos 5 sens. Les informations sont ensuite envoyees dans differentes zones du cerveau.  Il y a donc une zone pour les sons, une zone pour les images ... Et la memoire, cest comme un muscle : en sentrainant, on peut retenir plus de choses et plus facilement !
+
+Identify: quelle et les 5sens
+
+Guess: je pense que les 5sens sont bouge apprendre ? ? ?
+
+Seek: quelle et les 5 sens du cerveau.
+
+Assess: non
+
+assess Cues: {""1"":""Le cerveau contrôle toutes nos actions, volontaires et involontaires"",""2"":""Notre cerveau peut stocker plus d'informations que 100 ordinateurs réunis"",""3"":""Il y a plusieurs activités qui aident la mémoire mais, surtout, il faut avoir un sommeil suffisant et bien réglé ""}
+
+Identify Validity: <NA>
+
+Guess Validity: <NA>
+
+Seek Validity: 1
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;1;1;1;1;"The entry has a Seek Validity of 1, so the Seek step is automatically considered valid. Let's evaluate the other criteria: 
+
+- Identify Step: The Identify step 'quelle et les 5sens' indicates a topic of interest related to the senses, which is valid.
+- Guess Step: The Guess step 'je pense que les 5sens sont bouge apprendre ? ? ?' suggests a possible explanation, albeit unclear, but it is related to the senses, so it is valid.
+- Seek Step: The Seek step 'quelle et les 5 sens du cerveau.' is formulated as a question, which is valid.
+- Assess Step: The Assess step states 'non', indicating no answer was found, which is valid.
+- Consistency: The Identify, Guess, and Seek steps are related to the same question about the senses, so they are consistent.
+- Reference Link: The steps are related to the topic of the reference text, which discusses the brain and senses, so this is valid.
+- Seek Question Originality: The answer to the Seek question is not found in the reference text, which discusses the brain's function but does not list the five senses, so this is valid.
+- Valid No: The Assess step indicates no answer was found, and the answer to the Seek question is not present in the assess_cues, confirming the validity of the 'no' answer.
+
+All criteria are met, and the cycle is valid.";1;few_shot;False
+6;train;"Id: bc5_3
+
+Text: Toutankhamon etait un pharaon, un roi de l'Egypte antique. Il est tres connu aujourdhui parce que des archeologues ont retrouve son cercueil intacte avec tous ses tresors, en 1922. Pour les Egyptiens, il y avait une vie apres la mort, une vie eternelle. Cest pour cela que le corps devait etre conserve dans le meilleur etat possible, cest ce quon appelle la momification. Cest aussi pour cela que lon retrouve aujourdhui de la nourriture, des armes ou des tresors dans les tombeaux. Ces objets accompagnaient le pharaon dans sa vie apres la mort.
+
+Identify: L'Egypte antique
+
+Guess: Les archeologues sont des chercheurs scientifiques
+
+Seek: Qu'est-ce que l'Egypte antique
+
+Assess: L'Egypte antique est une ancienne civilisation de l'Afrique du Nord
+
+assess Cues: {""1"":""L'Egypte antique est une ancienne civilisation de l'Afrique du Nord"",""2"":""La momification revient à conserver le corps dans une boîte et le mettre dans une pièce sans lumière et sans air"",""3"":""Le premier Pharaon a vécu à 3000 av. J.-C.""}
+
+Identify Validity: 1
+
+Guess Validity: <NA>
+
+Seek Validity: 1
+
+Assess Validity: 1
+
+mechanical Rating: <NA>";1;0;0;0;1;The mechanical_rating is empty, so we need to evaluate the cycle validity based on the provided criteria. The Identify step is valid as it indicates a topic of interest, 'L'Egypte antique'. The Guess step suggests a possible explanation, 'Les archeologues sont des chercheurs scientifiques', which is valid. The Seek step is formulated as a question, 'Qu'est-ce que l'Egypte antique', which is valid. The Assess step provides an answer, 'L'Egypte antique est une ancienne civilisation de l'Afrique du Nord', which is found in the assess_cues, making it valid. The Identify, Guess, and Seek steps are consistent and related to the same question about ancient Egypt. They are also related to the topic of the reference text, which discusses ancient Egypt and its practices. The Seek question originality is valid because the answer to 'Qu'est-ce que l'Egypte antique' is not found in the reference text. The Resolving Answer is valid as the Assess step answers the Seek question. The Valid Answer criterion is met because the Assess step's answer is present in the assess_cues. All criteria are met, so the cycle is valid.;1;few_shot;False
+7;train;"Id: bc6_7
+
+Text: La Rome antique designe l'histoire de la cite de Rome pendant l'Antiquite. Selon la legende, Rome aurait ete fondee par Romulus qui aurai donne son nom a la ville. Au depart, ce n'etait qu'un groupe de quelques villages, puis l'Empire romain va couvrir une grande partie de l'Europe et entourer toute la mer Mediterranee. La religion romaine comptait de nombreux dieux, inspires en partie des dieux grecs.
+
+Identify: la mer Mediterranee
+
+Guess: La mer Mediterranee entoure l'Europe
+
+Seek: Ou se trouve la mer Mediterranee?
+
+Assess: La Mediterranee est une mer internationale
+
+assess Cues: {""1"":""Dans la légende, Romulus est le premier roi de Rome"",""2"":""L'Antiquité s'est étendue entre 3200 avant J.C, jusqu'à l'année 476"",""4"":""La Méditerranée touche plusieurs continents""}
+
+Identify Validity: 3
+
+Guess Validity: 3
+
+Seek Validity: 3
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;0;The mechanical_rating is empty, so we need to evaluate the cycle validity based on the criteria. The Identify step indicates a topic of interest, 'la mer Mediterranee', which is valid. The Guess step suggests a possible explanation, 'La mer Mediterranee entoure l'Europe', which is valid. The Seek step is formulated as a question, 'Ou se trouve la mer Mediterranee?', which is valid. The Assess step provides an answer, 'La Mediterranee est une mer internationale', which is valid. The Identify, Guess, and Seek steps are consistent and related to the same question about the Mediterranean Sea. They are also related to the topic of the reference text, which discusses the Roman Empire and the Mediterranean Sea. The Seek question originality is valid because the answer to the Seek question is not found in the reference text. The Assess step provides an answer that resolves the Seek question. However, the answer 'La Mediterranee est une mer internationale' is not found in the assess_cues, which means the cycle is not valid according to the 'Valid Answer' criterion. Therefore, the cycle is invalid.;1;few_shot;False
+8;train;"Id: bc6_8
+
+Text: La foret tropicale humide a un climat qui fournit beaucoup d'eau et une temperature elevee toute l'annee. Cela favorise la densite et la croissance permanente des plantes de ces forets.  En Asie, on appelle ce genre de foret 'la jungle'. Elle est parfois appelee foret dense, bien que cette expression signifie seulement que les arbres sont tres proches les uns des autres. Dans les forets tropicales, les arbres formant trois etages de hauteur differentes, sont tres serres et perdent leurs feuilles irregulierement.
+
+Identify: Lieux des forets tropicales
+
+Guess: Les forest tropicales se trouvent dans differents endroits du monde
+
+Seek: Ou se trouvent les forets tropicales du monde?
+
+Assess: les forets tropicales se trouvent en Asie,Australie en amerique du sud et en afrique
+
+assess Cues: {""4"":""Les forêts tropicales sont toujours vertes car il pleut tout le temps"",""2"":""La température dans les forêts tropicales est entre 30° et 40°C"",""3"":""La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique""}
+
+Identify Validity: 3
+
+Guess Validity: <NA>
+
+Seek Validity: 3
+
+Assess Validity: 3
+
+mechanical Rating: <NA>";1;1;1;1;1;The entry meets the criteria for a valid cycle. The Identify step indicates a topic of interest related to the locations of tropical forests. The Guess step suggests a possible explanation by stating that tropical forests are found in different parts of the world. The Seek step is formulated as a question asking where tropical forests are located globally. The Assess step provides a possible answer, listing regions where tropical forests are found, which aligns with the question in the Seek step. The Identify, Guess, and Seek steps are consistent and related to the topic of the reference text, which discusses tropical forests. The answer to the Seek question is not found in the reference text, ensuring originality. The Assess step provides an answer that is present in the assess_cues, confirming a valid answer was found. Additionally, the Identify, Seek, and Assess steps have numeric validity values, which means they are accepted without re-checking. Therefore, the cycle is valid.;1;few_shot;False
+9;train;"Id: mc10_3
+
+Text: Toutankhamon etait un pharaon, un roi de l'Egypte antique. Il est tres connu aujourdhui parce que des archeologues ont retrouve son cercueil intacte avec tous ses tresors, en 1922. Pour les Egyptiens, il y avait une vie apres la mort, une vie eternelle. Cest pour cela que le corps devait etre conserve dans le meilleur etat possible, cest ce quon appelle la momification. Cest aussi pour cela que lon retrouve aujourdhui de la nourriture, des armes ou des tresors dans les tombeaux. Ces objets accompagnaient le pharaon dans sa vie apres la mort.
+
+Identify: Le tombeau de Toutankhamon
+
+Guess: Ia momie etait entiere
+
+Seek: Les objets du tombeau
+
+Assess: Je ne trouve pas ma reponse
+
+assess Cues: {""1"":""L'Egypte antique est une ancienne civilisation de l'Afrique du Nord"",""2"":""La momification revient à conserver le corps dans une boîte et le mettre dans une pièce sans lumière et sans air"",""3"":""Le premier Pharaon a vécu à 3000 av. J.-C.""}
+
+Identify Validity: <NA>
+
+Guess Validity: <NA>
+
+Seek Validity: <NA>
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;0;"The entry does not have a mechanical rating, so we need to evaluate the cycle validity based on the provided criteria. 
+
+1. Identify Step: The Identify step 'Le tombeau de Toutankhamon' indicates a topic of interest related to the reference text about Tutankhamun's tomb. 
+
+2. Guess Step: The Guess step 'Ia momie etait entiere' suggests a possible explanation related to the condition of the mummy, which is consistent with the topic of Tutankhamun's tomb. 
+
+3. Seek Step: The Seek step 'Les objets du tombeau' is not formulated as a question, which is a requirement for validity. 
+
+4. Assess Step: The Assess step 'Je ne trouve pas ma reponse' states that no answer was found, which is acceptable. 
+
+5. Consistency: The Identify, Guess, and Seek steps are related to the same topic of Tutankhamun's tomb. 
+
+6. Reference Link: The steps are related to the topic of the reference text, which discusses Tutankhamun's tomb and its contents. 
+
+7. Seek Question Originality: The Seek step does not ask a question, but the topic of 'Les objets du tombeau' is not directly answered in the reference text. 
+
+8. Resolving Answer: The Assess step states no answer was found, so this criterion is not applicable. 
+
+9. Valid No: The Assess step indicates no answer was found, and the answer to the Seek step is not present in the assess_cues, which is valid. 
+
+Overall, the cycle is invalid due to the Seek step not being formulated as a question.";1;few_shot;False
+10;train;"Id: mc10_4
+
+Text: La tres grande majorite de lor disponible dans le monde est utilisee en bijouterie et pour sa fonction decorative : vetements, monuments ou uvres dart... Mais lor a dautres usages plus inattendus : les dentistes lutilisent pour fabriquer des couronnes dentaires par exemple. Presque tous les produits electroniques (telephone, ordinateur...) contiennent de lor en tres petite quantite car il permet de bien connecter les composantes. L'or est egalement utilise dans la fabrication des equipements spatiaux.
+
+Identify: L'or dans les equipements patiaux
+
+Guess: L'or permet de bien connecter les composants internes des equipements spatiaux
+
+Seek: Ou trouver de l 'or
+
+Assess: Je n'ai pas pu trouver ma reponse
+
+assess Cues: {""4"":""Les couronnes en or sont plus chères"",""2"":""L'or permet de bien connecter les composants internes des équipement spatiaux"",""3"":""Le cuivre est un très bon conducteur pas cher""}
+
+Identify Validity: 2
+
+Guess Validity: 2
+
+Seek Validity: <NA>
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;1;The mechanical_rating is empty, so we need to evaluate the cycle validity based on the criteria. The Identify step is valid as it indicates a topic of interest related to the reference text, which is the use of gold in space equipment. The Guess step is valid as it suggests a possible explanation related to the Identify step. The Seek step is formulated as a question, asking where to find gold, which is valid. The Assess step states that no answer was found, which is acceptable. The Identify, Guess, and Seek steps are consistent and related to the topic of the reference text. The Seek question originality is valid because the answer to the Seek question is not found in the reference text. The Assess step states no answer was found, and the answer to the Seek question is not present in the assess_cues, confirming the validity of the 'no answer' claim. Therefore, all criteria are met, and the cycle is valid.;1;few_shot;False
+11;train;"Id: mc12_8
+
+Text: La foret tropicale humide a un climat qui fournit beaucoup d'eau et une temperature elevee toute l'annee. Cela favorise la densite et la croissance permanente des plantes de ces forets.  En Asie, on appelle ce genre de foret 'la jungle'. Elle est parfois appelee foret dense, bien que cette expression signifie seulement que les arbres sont tres proches les uns des autres. Dans les forets tropicales, les arbres formant trois etages de hauteur differentes, sont tres serres et perdent leurs feuilles irregulierement.
+
+Identify: lieux des forets tropicales
+
+Guess: les forets tropical se trouvent dans different endroits du monde
+
+Seek: ou se trouvent les forets tropical du monde ?
+
+Assess: les foets se trouvent en asie australie enamerique central amerique du sud et en afrique
+
+assess Cues: {""4"":""Les forêts tropicales sont toujours vertes car il pleut tout le temps"",""2"":""La température dans les forêts tropicales est entre 30° et 40°C"",""3"":""La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique""}
+
+Identify Validity: 3
+
+Guess Validity: <NA>
+
+Seek Validity: 3
+
+Assess Validity: 3
+
+mechanical Rating: <NA>";1;1;1;1;1;The mechanical_rating is empty, so we need to evaluate the cycle validity based on the criteria. The Identify step indicates a topic of interest: 'lieux des forets tropicales', which is valid. The Guess step suggests a possible explanation: 'les forets tropical se trouvent dans different endroits du monde', which is valid. The Seek step is formulated as a question: 'ou se trouvent les forets tropical du monde ?', which is valid. The Assess step provides an answer: 'les foets se trouvent en asie australie enamerique central amerique du sud et en afrique', which answers the Seek question. The Identify, Guess, and Seek steps are consistent and related to the same question about the location of tropical forests. They are also related to the topic of the reference text, which discusses tropical forests. The Seek question's answer is not found in the reference text, ensuring originality. The Assess step provides an answer that is indeed found in the assess_cues ('La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique'), confirming a valid answer was found. All steps have a numeric validity value, so they are accepted without re-checking. Therefore, the cycle is valid.;1;few_shot;False
+0;train;"Id: bc4_1
+
+Text: A des dizaines de kilometres sous nos pieds, la terre contient une couche quon appelle le manteau. Il fait tellement chaud sur cette couche que les roches deviennent liquides : cest ce qu'on appelle le magma. Le magma est responsable de l'explosion des volcans: c'est ce que les scientifiques appellent aussi une eruption d'un volcan. On dit quun volcan est endormi sil ny a eu aucune eruption dans les 10 000 dernieres annees. Au dela de 10 000 ans, on peut dire que le volcan est eteint.
+
+Identify: le magma
+
+Guess: La temperature du magma depasse les 500c
+
+Seek: Quelle est la temperature du magma?
+
+Assess: La temperature du magma atteint les 1000c
+
+assess Cues: {""1"":""La terre contient 7 couches"",""2"":""La température du magma atteint les 1000°C"",""3"":""La température à l'éruption d'un volcan est à 700°C""}
+
+Identify Validity: <NA>
+
+Guess Validity: 2
+
+Seek Validity: 2
+
+Assess Validity: 2
+
+mechanical Rating: <NA>";1;1;1;1;1;The cycle meets all the criteria for validity: 1) The Identify step 'le magma' indicates a topic of interest related to the reference text. 2) The Guess step 'La temperature du magma depasse les 500c' suggests a possible explanation about the temperature of magma. 3) The Seek step 'Quelle est la temperature du magma?' is formulated as a question. 4) The Assess step 'La temperature du magma atteint les 1000c' identifies a possible answer. 5) The Identify, Guess, and Seek steps are consistent and related to the same question about magma temperature. 6) These steps are related to the topic of the reference text, which discusses magma and volcanic eruptions. 7) The Seek question's answer is not found in the reference text, as the text does not specify the temperature of magma. 8) The Assess step provides an answer that resolves the Seek question. 9) The answer 'La temperature du magma atteint les 1000°C' is indeed present in the assess_cues, confirming a valid answer was found.;1;zero_shot;False
+1;train;"Id: bc4_6
+
+Text: La religion de la Grece antique comprend plusieurs dieux. Les aventures de ces dieux forment la mythologie grecque, l'une des mythologies les plus developpees de l'histoire antique. D'apres les Grecs, les 12 principaux dieux vivent sur l'Olympe et ont une apparence et un comportement comparables a celui des humains. Les dieux les plus connus sont : Athena, deesse de la guerre, Zeus, roi des dieux et dieu de la foudre. Hera, deesse du mariage. Poseidon, dieu des oceans.
+
+Identify: Une mythologie
+
+Guess: Une mythologie est un ensemble de contes imaginaires
+
+Seek: Qu'est-ce qu'une mythologie
+
+Assess: Une mythologie est un ensemble de legendes lies a une civilisation bien precise
+
+assess Cues: {""1"":""Une mythologie est un ensemble de légendes liées à une civilisation"",""2"":""L'histoire comprend beaucoup de mythologies"",""3"":""L'Olympe est la plus haute montagne de Grèce""}
+
+Identify Validity: 1
+
+Guess Validity: 1
+
+Seek Validity: 1
+
+Assess Validity: 1
+
+mechanical Rating: 1";1;1;1;1;1;The mechanical_rating column already contains a numeric value, which is 1. According to the instructions, if a numeric value is present in the mechanical_rating column, it should be copied as the correct label. Therefore, the cycle is classified as valid with a rating of 1.;1;zero_shot;False
+2;train;"Id: bc4_7
+
+Text: La Rome antique designe l'histoire de la cite de Rome pendant l'Antiquite. Selon la legende, Rome aurait ete fondee par Romulus qui aurai donne son nom a la ville. Au depart, ce n'etait qu'un groupe de quelques villages, puis l'Empire romain va couvrir une grande partie de l'Europe et entourer toute la mer Mediterranee. La religion romaine comptait de nombreux dieux, inspires en partie des dieux grecs.
+
+Identify: Romulus
+
+Guess: Romulus est un roi de Rome
+
+Seek: Qui et Romulus mythologie a
+
+Assess: Dans la legende Romulus et le premier roi de Rome
+
+assess Cues: {""1"":""Dans la légende, Romulus est le premier roi de Rome"",""2"":""L'Antiquité s'est étendue entre 3200 avant J.C, jusqu'à l'année 476"",""4"":""La Méditerranée touche plusieurs continents""}
+
+Identify Validity: 1
+
+Guess Validity: 1
+
+Seek Validity: 1
+
+Assess Validity: 1
+
+mechanical Rating: 1";1;1;1;1;1;The mechanical_rating is provided as 1, which overrides any other logic in the codebook. Therefore, the cycle is considered valid without further evaluation.;1;zero_shot;False
+3;train;"Id: bc4_8
+
+Text: La foret tropicale humide a un climat qui fournit beaucoup d'eau et une temperature elevee toute l'annee. Cela favorise la densite et la croissance permanente des plantes de ces forets.  En Asie, on appelle ce genre de foret 'la jungle'. Elle est parfois appelee foret dense, bien que cette expression signifie seulement que les arbres sont tres proches les uns des autres. Dans les forets tropicales, les arbres formant trois etages de hauteur differentes, sont tres serres et perdent leurs feuilles irregulierement.
+
+Identify: Les plantes de foret tropicales
+
+Guess: Les foret tropicale contiennent tout type de plantes
+
+Seek: Quelle plante peut-on voir dans les forets
+
+Assess: Les foret tropicale sont toujours vertes car il pleut tout le temps
+
+assess Cues: {""4"":""Les forêts tropicales sont toujours vertes car il pleut tout le temps"",""2"":""La température dans les forêts tropicales est entre 30° et 40°C"",""3"":""La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique""}
+
+Identify Validity: 1
+
+Guess Validity: 1
+
+Seek Validity: 1
+
+Assess Validity: 4
+
+mechanical Rating: 0";1;0;0;0;0;The mechanical_rating is provided as 0, which overrides any other logic in the codebook. Therefore, the cycle is classified as invalid without further evaluation.;1;zero_shot;False
+4;train;"Id: bc5_1
+
+Text: A des dizaines de kilometres sous nos pieds, la terre contient une couche quon appelle le manteau. Il fait tellement chaud sur cette couche que les roches deviennent liquides : cest ce qu'on appelle le magma. Le magma est responsable de l'explosion des volcans: c'est ce que les scientifiques appellent aussi une eruption d'un volcan. On dit quun volcan est endormi sil ny a eu aucune eruption dans les 10 000 dernieres annees. Au dela de 10 000 ans, on peut dire que le volcan est eteint.
+
+Identify: Pourqoi on l'appelle le manteau.
+
+Guess: le magma et une pierre.
+
+Seek: quel et la temperature magma
+
+Assess: 1 000c
+
+assess Cues: {""1"":""La terre contient 7 couches"",""2"":""La température du magma atteint les 1000°C"",""3"":""La température à l'éruption d'un volcan est à 700°C""}
+
+Identify Validity: <NA>
+
+Guess Validity: <NA>
+
+Seek Validity: 2
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;1;"Let's evaluate the cycle based on the provided criteria: 
+
+1. Identify Step: The Identify step 'Pourqoi on l'appelle le manteau' indicates a topic of interest related to the reference text, which discusses the mantle. 
+
+2. Guess Step: The Guess step 'le magma et une pierre' suggests a possible explanation related to the topic of the mantle and magma. 
+
+3. Seek Step: The Seek step 'quel et la temperature magma' is formulated as a question. 
+
+4. Assess Step: The Assess step '1 000c' identifies a possible answer. 
+
+5. Consistency: The Identify, Guess, and Seek steps are related to the same question about the mantle and magma. 
+
+6. Reference Link: The steps are related to the topic of the reference text, which discusses the mantle and magma. 
+
+7. Seek Question Originality: The answer to the Seek question 'quel et la temperature magma' is not found in the reference text, which does not mention the temperature of magma. 
+
+8. Resolving Answer: The Assess step '1 000c' answers the Seek question about the temperature of magma. 
+
+9. Valid Answer: The Assess step indicates an answer was found, and '1 000c' is indeed in the assess_cues as '2'. 
+
+Since all criteria are met, the cycle is valid.";1;zero_shot;False
+5;train;"Id: bc5_2
+
+Text: La memoire, cest une fonction de notre cerveau qui nous permet de garder les informations pour ensuite les recuperer et les utiliser. Tables de multiplication, poesies, ... notre cerveau est capable denregistrer et d'organiser enormement dinformations. Il recolte ces informations grace a nos 5 sens. Les informations sont ensuite envoyees dans differentes zones du cerveau.  Il y a donc une zone pour les sons, une zone pour les images ... Et la memoire, cest comme un muscle : en sentrainant, on peut retenir plus de choses et plus facilement !
+
+Identify: quelle et les 5sens
+
+Guess: je pense que les 5sens sont bouge apprendre ? ? ?
+
+Seek: quelle et les 5 sens du cerveau.
+
+Assess: non
+
+assess Cues: {""1"":""Le cerveau contrôle toutes nos actions, volontaires et involontaires"",""2"":""Notre cerveau peut stocker plus d'informations que 100 ordinateurs réunis"",""3"":""Il y a plusieurs activités qui aident la mémoire mais, surtout, il faut avoir un sommeil suffisant et bien réglé ""}
+
+Identify Validity: <NA>
+
+Guess Validity: <NA>
+
+Seek Validity: 1
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;1;1;1;1;The cycle validity is determined by evaluating each step against the criteria. The Identify step ('quelle et les 5sens') indicates a topic of interest related to the reference text, which discusses the brain and memory. The Guess step ('je pense que les 5sens sont bouge apprendre ? ? ?') attempts to suggest a possible explanation, although it is unclear and not well-formed. The Seek step ('quelle et les 5 sens du cerveau.') is formulated as a question, which is valid. The Assess step states 'non', indicating no answer was found, which is acceptable. Consistency is maintained as the Identify, Guess, and Seek steps are related to the same question about the five senses. The Reference Link is valid as the steps are related to the topic of the reference text, which discusses how the brain processes information through the senses. The Seek Question Originality is valid because the answer to the Seek question is not found in the reference text. The Resolving Answer criterion is met because the Assess step states 'non', indicating no answer was found, which is consistent with the assess_cues. The Valid No criterion is met because the answer to the Seek question is not present in the assess_cues. Therefore, all criteria are met, and the cycle is valid.;1;zero_shot;False
+6;train;"Id: bc5_3
+
+Text: Toutankhamon etait un pharaon, un roi de l'Egypte antique. Il est tres connu aujourdhui parce que des archeologues ont retrouve son cercueil intacte avec tous ses tresors, en 1922. Pour les Egyptiens, il y avait une vie apres la mort, une vie eternelle. Cest pour cela que le corps devait etre conserve dans le meilleur etat possible, cest ce quon appelle la momification. Cest aussi pour cela que lon retrouve aujourdhui de la nourriture, des armes ou des tresors dans les tombeaux. Ces objets accompagnaient le pharaon dans sa vie apres la mort.
+
+Identify: L'Egypte antique
+
+Guess: Les archeologues sont des chercheurs scientifiques
+
+Seek: Qu'est-ce que l'Egypte antique
+
+Assess: L'Egypte antique est une ancienne civilisation de l'Afrique du Nord
+
+assess Cues: {""1"":""L'Egypte antique est une ancienne civilisation de l'Afrique du Nord"",""2"":""La momification revient à conserver le corps dans une boîte et le mettre dans une pièce sans lumière et sans air"",""3"":""Le premier Pharaon a vécu à 3000 av. J.-C.""}
+
+Identify Validity: 1
+
+Guess Validity: <NA>
+
+Seek Validity: 1
+
+Assess Validity: 1
+
+mechanical Rating: <NA>";1;0;0;0;1;The cycle is evaluated based on the provided criteria: 1. Identify Step: The Identify step 'L'Egypte antique' indicates a topic of interest related to ancient Egypt. 2. Guess Step: The Guess step 'Les archeologues sont des chercheurs scientifiques' suggests a possible explanation related to the topic of archaeology, which is relevant to the reference text. 3. Seek Step: The Seek step 'Qu'est-ce que l'Egypte antique' is formulated as a question. 4. Assess Step: The Assess step 'L'Egypte antique est une ancienne civilisation de l'Afrique du Nord' identifies a possible answer. 5. Consistency: The Identify, Guess, and Seek steps are related to the topic of ancient Egypt and archaeology. 6. Reference Link: The steps are related to the topic of the reference text, which discusses ancient Egypt and its archaeological significance. 7. Seek Question Originality: The answer to the Seek question is not found in the reference text, which does not explicitly define 'L'Egypte antique.' 8. Resolving Answer: The Assess step provides an answer that resolves the Seek question. 9. Valid Answer: The answer in the Assess step is indeed present in the assess_cues, confirming that an answer was found. All criteria are met, making the cycle valid.;1;zero_shot;False
+7;train;"Id: bc6_7
+
+Text: La Rome antique designe l'histoire de la cite de Rome pendant l'Antiquite. Selon la legende, Rome aurait ete fondee par Romulus qui aurai donne son nom a la ville. Au depart, ce n'etait qu'un groupe de quelques villages, puis l'Empire romain va couvrir une grande partie de l'Europe et entourer toute la mer Mediterranee. La religion romaine comptait de nombreux dieux, inspires en partie des dieux grecs.
+
+Identify: la mer Mediterranee
+
+Guess: La mer Mediterranee entoure l'Europe
+
+Seek: Ou se trouve la mer Mediterranee?
+
+Assess: La Mediterranee est une mer internationale
+
+assess Cues: {""1"":""Dans la légende, Romulus est le premier roi de Rome"",""2"":""L'Antiquité s'est étendue entre 3200 avant J.C, jusqu'à l'année 476"",""4"":""La Méditerranée touche plusieurs continents""}
+
+Identify Validity: 3
+
+Guess Validity: 3
+
+Seek Validity: 3
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;0;The cycle is evaluated based on the provided criteria: 1. Identify Step: The Identify step 'la mer Mediterranee' indicates a topic of interest. 2. Guess Step: The Guess step 'La mer Mediterranee entoure l'Europe' suggests a possible explanation. 3. Seek Step: The Seek step 'Ou se trouve la mer Mediterranee?' is formulated as a question. 4. Assess Step: The Assess step 'La Mediterranee est une mer internationale' identifies a possible answer. 5. Consistency: The Identify, Guess, and Seek steps are related to the same question about the Mediterranean Sea. 6. Reference Link: The steps are related to the topic of the reference text, which discusses the Mediterranean Sea in the context of ancient Rome. 7. Seek Question Originality: The answer to the Seek question is not found in the reference text, which does not specify the location of the Mediterranean Sea. 8. Resolving Answer: The Assess step provides an answer that is relevant to the Seek question. 9. Valid Answer: The Assess step indicates an answer was found, but 'La Mediterranee est une mer internationale' is not present in the assess_cues, suggesting no valid answer was actually found. Therefore, the cycle is not valid.;1;zero_shot;False
+8;train;"Id: bc6_8
+
+Text: La foret tropicale humide a un climat qui fournit beaucoup d'eau et une temperature elevee toute l'annee. Cela favorise la densite et la croissance permanente des plantes de ces forets.  En Asie, on appelle ce genre de foret 'la jungle'. Elle est parfois appelee foret dense, bien que cette expression signifie seulement que les arbres sont tres proches les uns des autres. Dans les forets tropicales, les arbres formant trois etages de hauteur differentes, sont tres serres et perdent leurs feuilles irregulierement.
+
+Identify: Lieux des forets tropicales
+
+Guess: Les forest tropicales se trouvent dans differents endroits du monde
+
+Seek: Ou se trouvent les forets tropicales du monde?
+
+Assess: les forets tropicales se trouvent en Asie,Australie en amerique du sud et en afrique
+
+assess Cues: {""4"":""Les forêts tropicales sont toujours vertes car il pleut tout le temps"",""2"":""La température dans les forêts tropicales est entre 30° et 40°C"",""3"":""La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique""}
+
+Identify Validity: 3
+
+Guess Validity: <NA>
+
+Seek Validity: 3
+
+Assess Validity: 3
+
+mechanical Rating: <NA>";1;1;1;1;1;"Let's evaluate the cycle based on the provided criteria: 
+
+1. Identify Step: The Identify step 'Lieux des forets tropicales' indicates a topic of interest, which is the location of tropical forests. 
+
+2. Guess Step: The Guess step 'Les forest tropicales se trouvent dans differents endroits du monde' suggests a possible explanation, indicating that tropical forests are found in various locations worldwide. 
+
+3. Seek Step: The Seek step 'Ou se trouvent les forets tropicales du monde?' is formulated as a question asking where tropical forests are located globally. 
+
+4. Assess Step: The Assess step 'les forets tropicales se trouvent en Asie, Australie en amerique du sud et en afrique' identifies a possible answer, listing specific regions where tropical forests are found. 
+
+5. Consistency: The Identify, Guess, and Seek steps are related to the same question about the location of tropical forests. 
+
+6. Reference Link: The steps are related to the topic of the reference text, which discusses tropical forests. 
+
+7. Seek Question Originality: The answer to the Seek question is not found in the reference text, which does not specify the global locations of tropical forests. 
+
+8. Resolving Answer: The Assess step provides an answer to the Seek question by listing regions where tropical forests are found. 
+
+9. Valid Answer: The Assess step indicates an answer was found, and the answer 'La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique' is indeed in the assess_cues. 
+
+All criteria are met, so the cycle is valid.";1;zero_shot;False
+9;train;"Id: mc10_3
+
+Text: Toutankhamon etait un pharaon, un roi de l'Egypte antique. Il est tres connu aujourdhui parce que des archeologues ont retrouve son cercueil intacte avec tous ses tresors, en 1922. Pour les Egyptiens, il y avait une vie apres la mort, une vie eternelle. Cest pour cela que le corps devait etre conserve dans le meilleur etat possible, cest ce quon appelle la momification. Cest aussi pour cela que lon retrouve aujourdhui de la nourriture, des armes ou des tresors dans les tombeaux. Ces objets accompagnaient le pharaon dans sa vie apres la mort.
+
+Identify: Le tombeau de Toutankhamon
+
+Guess: Ia momie etait entiere
+
+Seek: Les objets du tombeau
+
+Assess: Je ne trouve pas ma reponse
+
+assess Cues: {""1"":""L'Egypte antique est une ancienne civilisation de l'Afrique du Nord"",""2"":""La momification revient à conserver le corps dans une boîte et le mettre dans une pièce sans lumière et sans air"",""3"":""Le premier Pharaon a vécu à 3000 av. J.-C.""}
+
+Identify Validity: <NA>
+
+Guess Validity: <NA>
+
+Seek Validity: <NA>
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;0;"Let's evaluate the cycle based on the provided criteria: 
+
+1. Identify Step: The Identify step 'Le tombeau de Toutankhamon' indicates a topic of interest related to the reference text about Tutankhamun's tomb. 
+
+2. Guess Step: The Guess step 'La momie etait entiere' suggests a possible explanation or assumption about the state of the mummy, which is related to the topic of the tomb. 
+
+3. Seek Step: The Seek step 'Les objets du tombeau' is not formulated as a question, which is a requirement for validity. 
+
+4. Assess Step: The Assess step states 'Je ne trouve pas ma reponse', indicating that no answer was found, which is acceptable. 
+
+5. Consistency: The Identify, Guess, and Seek steps are related to the same topic, which is the tomb of Tutankhamun. 
+
+6. Reference Link: The steps are related to the topic of the reference text, which discusses Tutankhamun's tomb and its contents. 
+
+7. Seek Question Originality: The Seek step does not ask a question, but if it did, the answer should not be found in the reference text. The reference text does mention objects in the tomb, so a question about them would not be original. 
+
+8. Resolving Answer: The Assess step states no answer was found, so this criterion is not applicable. 
+
+9. Valid No: The Assess step indicates no answer was found, and the answer to the Seek step is not present in the assess_cues, which is consistent. 
+
+Overall, the cycle is invalid due to the Seek step not being formulated as a question, which is a critical requirement for validity.";1;zero_shot;False
+10;train;"Id: mc10_4
+
+Text: La tres grande majorite de lor disponible dans le monde est utilisee en bijouterie et pour sa fonction decorative : vetements, monuments ou uvres dart... Mais lor a dautres usages plus inattendus : les dentistes lutilisent pour fabriquer des couronnes dentaires par exemple. Presque tous les produits electroniques (telephone, ordinateur...) contiennent de lor en tres petite quantite car il permet de bien connecter les composantes. L'or est egalement utilise dans la fabrication des equipements spatiaux.
+
+Identify: L'or dans les equipements patiaux
+
+Guess: L'or permet de bien connecter les composants internes des equipements spatiaux
+
+Seek: Ou trouver de l 'or
+
+Assess: Je n'ai pas pu trouver ma reponse
+
+assess Cues: {""4"":""Les couronnes en or sont plus chères"",""2"":""L'or permet de bien connecter les composants internes des équipement spatiaux"",""3"":""Le cuivre est un très bon conducteur pas cher""}
+
+Identify Validity: 2
+
+Guess Validity: 2
+
+Seek Validity: <NA>
+
+Assess Validity: <NA>
+
+mechanical Rating: <NA>";1;0;0;0;0;The cycle is evaluated based on several criteria. First, the Identify step indicates a topic of interest, which is 'L'or dans les equipements spatiaux', and is related to the reference text. The Guess step suggests a possible explanation, 'L'or permet de bien connecter les composants internes des equipements spatiaux', which is consistent with the Identify step and the reference text. The Seek step is formulated as a question, 'Ou trouver de l 'or', which is related to the topic of the reference text but does not directly relate to the Identify and Guess steps. The Assess step states 'Je n'ai pas pu trouver ma reponse', indicating no answer was found. The assess_cues do not contain an answer to the Seek question, confirming the validity of the 'no answer' claim. However, the Seek step is not consistent with the Identify and Guess steps, as it asks a different question. Therefore, the cycle is invalid due to inconsistency between the Seek step and the other steps.;1;zero_shot;False
+11;train;"Id: mc12_8
+
+Text: La foret tropicale humide a un climat qui fournit beaucoup d'eau et une temperature elevee toute l'annee. Cela favorise la densite et la croissance permanente des plantes de ces forets.  En Asie, on appelle ce genre de foret 'la jungle'. Elle est parfois appelee foret dense, bien que cette expression signifie seulement que les arbres sont tres proches les uns des autres. Dans les forets tropicales, les arbres formant trois etages de hauteur differentes, sont tres serres et perdent leurs feuilles irregulierement.
+
+Identify: lieux des forets tropicales
+
+Guess: les forets tropical se trouvent dans different endroits du monde
+
+Seek: ou se trouvent les forets tropical du monde ?
+
+Assess: les foets se trouvent en asie australie enamerique central amerique du sud et en afrique
+
+assess Cues: {""4"":""Les forêts tropicales sont toujours vertes car il pleut tout le temps"",""2"":""La température dans les forêts tropicales est entre 30° et 40°C"",""3"":""La forêt tropicale se trouve en Asie, en Amérique du Sud et en Afrique""}
+
+Identify Validity: 3
+
+Guess Validity: <NA>
+
+Seek Validity: 3
+
+Assess Validity: 3
+
+mechanical Rating: <NA>";1;1;1;1;1;The cycle meets the criteria for validity: 1) The Identify step indicates a topic of interest related to the locations of tropical forests. 2) The Guess step suggests a possible explanation by stating that tropical forests are found in different parts of the world. 3) The Seek step is formulated as a question asking where tropical forests are located globally. 4) The Assess step provides an answer listing regions where tropical forests are found, which directly answers the Seek question. 5) The Identify, Guess, and Seek steps are consistent and related to the same question about the locations of tropical forests. 6) These steps are related to the topic of the reference text, which discusses tropical forests. 7) The Seek question's answer is not found in the reference text, as the text does not specify the global locations of tropical forests. 8) The Assess step provides a resolving answer to the Seek question. 9) The answer in the Assess step is indeed found in the assess_cues, confirming that an answer was found. Therefore, the cycle is valid.;1;zero_shot;False

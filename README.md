@@ -1,19 +1,62 @@
 # LLM4Humanities
 
-A **Python-based toolkit** for qualitative data analysis using **Large Language Models (LLMs)**.
+**LLM4Humanities** is a **Python-based toolkit and web app** for assisting qualitative researchers in annotating textual data using **Large Language Models (LLMs)**.
 
-This toolkit provides a method for automatic annotation of qualitative data.
-You will find two web interfaces that require no coding skills to help you perform manual and automatic annotations of your data.
+It provides an end-to-end workflow that combines **manual coding**, **automated classification**, and **evaluation metrics** to use and help you decide whether LLMs can reliably support your annotation tasks.
 
-First, you will need to manually annotate a subset of data (using the Manual Annotator app).
-Then, you will be able to evaluate metrics between human and LLM annotations to determine if you can safely annotate the rest of your data using the automation annotation tool (using the LLM4Humanities app).
+## Key Features
 
-We provide several metrics for you to use as you wish to make your own informed choice.
-We provide Cohen's Kappa between your set of annotated data and the same subsample annotated by a LLM, and we provide the alt-test procedure (see [https://arxiv.org/pdf/2501.10970]) which requires more annotators (at least 3 annotators) but is more robust.
+- No coding skills required using the app
+- Supports **manual** and **automatic** annotation of qualitative data
+- Built-in evaluation metrics to compare human and model agreement
+- Designed for **multi-class**, and **binary** classification
+- Compatible with **OpenAI**, **Anthropic**, **Gemini** and **Azure** API keys
 
-The web app requires a consistent format of data, either CSV or Excel, where one row represents one entry to evaluate. You can have as many columns as you want to include in your analysis, but at least one of them should be a unique identifier.
+## How It Works
 
----
+### 1. **Manual Annotation**
+Use the `Manual Annotator` web app to label a subset of your dataset if you need to.  
+This serves as a reference to evaluate model performance.
+
+### 2. **Automated Annotation**
+
+You can choose between:
+
+- **Web App** (`LLM4Humanities`):  
+  - Configure prompts and LLM providers  
+  - Run classification scenarios on your labeled subset  
+  - Measure agreement between model and human coders  
+
+- **Step-by-Step Notebooks** (Google Colab):  
+  - Guides you through the same workflow in code cells  
+  - Requires minimal coding knowledge—each step is clearly explained  
+  - Ideal if you prefer more control, customization, or wish to inspect intermediate results 
+  - Examples dataset are provided 
+
+### 3. **Evaluate Model Performance**
+We provide several metrics for you to use as you wish to make your own informed choice (in the app or in the notebooks):
+
+- **Cohen's Kappa**  
+  Measures agreement between the LLM and human annotators.
+
+- **Krippendorff's Alpha**  
+  For ordinal or nominal labels, compute confidence intervals via bootstrapping.
+
+- **ALT-Test** ([arXiv:2501.10970](https://arxiv.org/pdf/2501.10970))  
+  A robust non-inferiority test comparing the model to each annotator in turn.  
+  Requires **at least 3 human annotators**.
+
+- **Classification Metrics**  
+  Per-class breakdown of true/false positives, recall, and error rates.
+
+## Data Requirements
+
+Your dataset should be in **CSV or Excel** format, with:
+
+- One row per entry to classify
+- One or more **textual columns** that will be shown to the model
+- At least one **unique identifier** column
+- For evaluate the LLM classification, at least one **annotation column** for human labels
 
 ## Running without installation
 
