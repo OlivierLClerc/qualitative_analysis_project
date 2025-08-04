@@ -1,6 +1,6 @@
 # LLM4Humanities
 
-[**LLM4Humanities**](https://flowanalysis.streamlit.app/) is a **Python-based toolkit and web app** for assisting qualitative researchers in annotating textual data using **Large Language Models (LLMs)**.
+**LLM4Humanities** is a **Python-based toolkit** and [**web app**](https://flowanalysis.streamlit.app/) for assisting qualitative researchers in annotating textual data using **Large Language Models (LLMs)**.
 
 It provides an end-to-end workflow that combines **manual coding**, **automated classification**, and **evaluation metrics** to use and help you decide whether LLMs can reliably support your annotation tasks.
 
