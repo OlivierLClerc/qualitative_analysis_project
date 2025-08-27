@@ -319,7 +319,14 @@ def compute_kappa_metrics(
     -------
     Tuple[pd.DataFrame, Dict[str, Dict[str, Any]]]
         A tuple containing:
-        - A DataFrame with aggregated kappa metrics
+        - A DataFrame with aggregated kappa metrics including:
+          * accuracy_GT_train/val: Model accuracy against ground truth (majority vote)
+          * kappa_GT_train/val: Model kappa against ground truth (majority vote)
+          * mean_kappa_llm_human: Mean kappa between LLM and individual human annotators
+          * mean_human_human_agreement: Mean kappa between human annotators
+          * {annotator}_accuracy_GT: Individual human accuracy against ground truth
+          * {annotator}_kappa_GT: Individual human kappa against ground truth
+          * For validation data: same metrics with _val suffix
         - A dictionary containing detailed kappa metrics for each scenario
     """
     # For the final summary dataframe
@@ -409,9 +416,9 @@ def compute_kappa_metrics(
                     weights=kappa_weights,
                 )
 
-                # Add basic metrics to aggregated_metrics
-                aggregated_metrics["accuracy_train"] = accuracy_train
-                aggregated_metrics["kappa_train"] = kappa_train
+                # Add basic metrics to aggregated_metrics with clearer naming
+                aggregated_metrics["accuracy_GT_train"] = accuracy_train
+                aggregated_metrics["kappa_GT_train"] = kappa_train
 
                 # Compute detailed kappa metrics for train data
                 train_kappa_metrics = compute_detailed_kappa_metrics(
@@ -421,13 +428,25 @@ def compute_kappa_metrics(
                     kappa_weights=kappa_weights,
                 )
 
-                # Add mean agreement scores to aggregated metrics
-                aggregated_metrics["mean_llm_human_agreement"] = train_kappa_metrics[
+                # Add mean agreement scores to aggregated metrics with clearer naming
+                aggregated_metrics["mean_kappa_llm_human"] = train_kappa_metrics[
                     "mean_llm_human_agreement"
                 ]
                 aggregated_metrics["mean_human_human_agreement"] = train_kappa_metrics[
                     "mean_human_human_agreement"
                 ]
+
+                # Compute individual human annotator metrics against ground truth (majority vote)
+                for annotator_name, annotations in train_human_annotations.items():
+
+                    # Compute kappa of this human annotator vs ground truth
+                    human_kappa_gt = compute_cohens_kappa(
+                        train_ground_truth,
+                        annotations,
+                        labels=labels,
+                        weights=kappa_weights,
+                    )
+                    aggregated_metrics[f"{annotator_name}_kappa_GT"] = human_kappa_gt
 
                 # Store DataFrames for detailed reporting
                 scenario_key = f"{prompt_name}_iteration_{iteration}"
@@ -458,9 +477,9 @@ def compute_kappa_metrics(
                     weights=kappa_weights,
                 )
 
-                # Add basic metrics to aggregated_metrics
-                aggregated_metrics["accuracy_val"] = accuracy_val
-                aggregated_metrics["kappa_val"] = kappa_val
+                # Add basic metrics to aggregated_metrics with clearer naming
+                aggregated_metrics["accuracy_GT_val"] = accuracy_val
+                aggregated_metrics["kappa_GT_val"] = kappa_val
 
                 # Compute detailed kappa metrics for validation data
                 val_kappa_metrics = compute_detailed_kappa_metrics(
@@ -470,13 +489,27 @@ def compute_kappa_metrics(
                     kappa_weights=kappa_weights,
                 )
 
-                # Add mean agreement scores to aggregated metrics
-                aggregated_metrics["mean_llm_human_agreement_val"] = val_kappa_metrics[
+                # Add mean agreement scores to aggregated metrics with clearer naming
+                aggregated_metrics["mean_kappa_llm_human_val"] = val_kappa_metrics[
                     "mean_llm_human_agreement"
                 ]
                 aggregated_metrics["mean_human_human_agreement_val"] = (
                     val_kappa_metrics["mean_human_human_agreement"]
                 )
+
+                # Compute individual human annotator metrics against ground truth (majority vote) for validation
+                for annotator_name, annotations in val_human_annotations.items():
+
+                    # Compute kappa of this human annotator vs ground truth
+                    human_kappa_gt = compute_cohens_kappa(
+                        val_ground_truth,
+                        annotations,
+                        labels=labels,
+                        weights=kappa_weights,
+                    )
+                    aggregated_metrics[f"{annotator_name}_kappa_GT_val"] = (
+                        human_kappa_gt
+                    )
 
             except Exception as e:
                 print(f"Error computing validation kappa metrics: {e}")

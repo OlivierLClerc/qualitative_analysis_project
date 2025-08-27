@@ -12,6 +12,22 @@ It provides an end-to-end workflow that combines **manual coding**, **automated 
 - Designed for **multi-class**, and **binary** classification
 - Compatible with **OpenAI**, **Anthropic**, **Gemini** and **Azure** API keys
 
+# Table of Contents
+- [Why this tool](#why-this-tool)
+- [How it works](#how-it-works)
+- [Data requirements](#data-requirements)
+- [Running without installation](#running-without-installation)
+- [Run Locally (Full Control)](#run-locally-full-control)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Cite / References](#cite--references)
+
+## Why this tool
+
+**Inter-rater reliability** (IRR) is essential in experimental psychology because it separates the variability of human judgments from the signal one seeks to interpret. Without a measure of IRR, it is impossible to assess what unknown portion of the data variance reflects coders’ idiosyncrasies rather than the phenomenon under study, which necessarily affects the validity of scientific conclusions.
+However, empirical studies often **skip** or **misreport** inter-rater reliability (IRR), or use **inadequate metrics** (e.g., raw % agreement, Pearson).
+**LLM4Humanities** gives you a fast, low-friction pipeline to (1) classify with an LLM, (2) compare to a human-labeled subset, and (3) report the right IRR with confidence intervals and decision guidance.
+
 ## How It Works
 
 ### 1. **Manual Annotation**
@@ -204,30 +220,30 @@ qualitative_analysis_project/
 └── requirements.txt
 ```
 
-## Main Files and Folders
+### Main Files and Folders
 
-### `app.py`
+#### `app.py`
 The main entry point for the LLM4Humanities app. It imports the modularized app from the streamlit_app package.
 
-### `manual_annotator_stream.py`
+#### `manual_annotator_stream.py`
 The main entry point for the Manual Annotator app. It imports the ManualAnnotatorApp class and sets up the Streamlit interface.
 
-### `manual_annotator/`
+#### `manual_annotator/`
 Contains the modules for the Manual Annotator app.
 
-### `streamlit_app/`
+#### `streamlit_app/`
 Contains the modules for the LLM4Humanities app.
 
-### `notebooks/`
+#### `notebooks/`
 Contains Jupyter notebooks demonstrating user-case for:
 - Binary classification
 - Multiclass classification
 - Complex classification
 
-### `data/`
+#### `data/`
 Holds sample data files for the different classification scenarios, organized into user case directories, plus an `outputs/` subfolder where processed results can be saved.
 
-### `qualitative_analysis/`
+#### `qualitative_analysis/`
 The main Python package containing modules used by the apps and the notebooks for:
 - Configuration management
 - Data processing
@@ -237,10 +253,10 @@ The main Python package containing modules used by the apps and the notebooks fo
 - Cost estimation
 - Logging
 
-### `codebook/`
+#### `codebook/`
 Contains text files defining classification rules or codebooks for the user-case.
 
-## Other Files
+#### Other Files
 
 - **`.env.example`** – Template for environment variables needed for API credentials.
 - **`.pre-commit-config.yaml`** – Configuration for pre-commit hooks (linting, formatting, etc.).
