@@ -24,9 +24,17 @@ It provides an end-to-end workflow that combines **manual coding**, **automated 
 
 ## Why this tool
 
-**Inter-rater reliability** (IRR) is essential in experimental psychology because it separates the variability of human judgments from the signal one seeks to interpret. Without a measure of IRR, it is impossible to assess what unknown portion of the data variance reflects coders’ idiosyncrasies rather than the phenomenon under study, which necessarily affects the validity of scientific conclusions.
-However, empirical studies often **skip** or **misreport** inter-rater reliability (IRR), or use **inadequate metrics** (e.g., raw % agreement, Pearson).
-**LLM4Humanities** gives you a fast, low-friction pipeline to (1) classify with an LLM, (2) compare to a human-labeled subset, and (3) report the right IRR with confidence intervals and decision guidance.
+Most datasets require at least one human coder to manually classify data before any analysis can begin. This process relies on a carefully defined set of guidelines (a codebook) to assign data to categories.
+**Annotation** is therefore indispensable in experimental psychology and related fields, but it is also slow and costly. Moreover, best practice requires at least two independent annotators to compute **inter-rater reliability** (IRR), making the process even more resource-intensive.
+
+IRR is crucial in experimental psychology because it separates the variability of human judgments from the signal researchers aim to interpret. Without IRR, it is impossible to assess what portion of the data variance reflects coder idiosyncrasies rather than the phenomenon under study, putting the validity of scientific conclusions at risk.
+Yet, despite its importance, IRR is often skipped, misreported, or calculated with inadequate metrics (e.g., raw % agreement, Pearson correlation).
+
+**LLM4Humanities** addresses these challenges with a complete pipeline:  
+
+1. **Manually annotate** only a small portion of your data *(minimizing cost and effort).*  
+2. **Use an LLM** to classify the rest of your dataset.  
+3. **Compare** LLM predictions to the human-labeled subset using proper IRR metrics, confidence intervals, and decision guidance.  
 
 ## How It Works
 
