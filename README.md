@@ -168,17 +168,22 @@ streamlit run app.py
 
 ```
 qualitative_analysis_project/
-├── codebook/
-│   ├── binary_codebook.txt
-│   └── multiclass_codebook.txt
 ├── data/
 │   ├── binary_user_case/
+│   │   ├── outputs/
+│   │   │   ├── binary_case_for_metrics.csv
+│   │   ├── binary_config.json
+│   │   └── binary_data.xlsx
 │   ├── complex_user_case/
-│   │   ├── complex_data.json
+│   │   ├── outputs/
+│   │   │   ├── complex_case_for_metrics.csv
+│   │   ├── complex_config.json
 │   │   └── complex_data.xlsx
-│   ├── multiclass_sample.csv
 │   ├── multiclass_user_case/
-│   │   └── multiclass_data.csv
+│   │   ├── outputs/
+│   │   │   ├── multiclass_case_for_metrics.csv
+│   │   ├── multiclass_config.json
+│   │   └── multiclass_data.xlsx
 │   └── outputs/
 ├── manual_annotator/
 │   ├── __init__.py
@@ -192,22 +197,28 @@ qualitative_analysis_project/
 │   ├── label_definition.py
 │   └── row_annotation.py
 ├── notebooks/
-│   ├── notebook_binary_colab.ipynb
-│   ├── notebook_multiclass_colab.ipynb
-│   └── notebook_sequential_binary_colab.ipynb
+│   ├── binary_case_colab.ipynb
+│   ├── complex_case_colab.ipynb
+│   └── multiclass_case_colab.ipynb
 ├── qualitative_analysis/
+│   ├── metrics/
+│   │   ├── __init__.py
+│   │   ├── alt_test.py
+│   │   ├── classification.py
+│   │   ├── kappa.py
+│   │   ├── krippendorff.py
+│   │   ├── utils.py
+│   │   └── visualization.py
 │   ├── __init__.py
-│   ├── alt_test.py
 │   ├── config.py
 │   ├── cost_estimation.py
 │   ├── data_processing.py
-│   ├── evaluation.py
 │   ├── logging.py
 │   ├── model_interaction.py
 │   ├── notebooks_functions.py
 │   ├── parsing.py
-│   ├── prompt_construction.py
-│   └── prompt_engineering.py
+│   ├── prompt_engineering.py
+│   └── scenario_runner.py
 ├── streamlit_app/
 │   ├── __init__.py
 │   ├── analysis.py
@@ -218,6 +229,7 @@ qualitative_analysis_project/
 │   ├── evaluation.py
 │   ├── field_selection.py
 │   ├── llm_configuration.py
+│   ├── prompt_construction.py
 │   └── session_management.py
 ├── .env.example
 ├── .gitignore
