@@ -197,13 +197,24 @@ def extract_code_from_response(
     4
     """
     if prefix:
-        # Case-insensitive search for the prefix followed by an integer
-        pattern = rf"(?i)\b{re.escape(prefix)}\s*[:\-]?\s*([+-]?\d+)\s*$"
-        match = re.search(pattern, response_text, re.MULTILINE)
-        if match:
-            return int(match.group(1))
-        else:
-            return None
+        # Try multiple patterns to handle different formats
+        patterns = [
+            # Pattern 1: Traditional format - prefix at end of line
+            rf"(?i)\b{re.escape(prefix)}\s*[:\-]?\s*([+-]?\d+)\s*$",
+            # Pattern 2: JSON key-value format - "key": "value"
+            rf'(?i)"{re.escape(prefix)}"\s*:\s*"([+-]?\d+)"',
+            # Pattern 3: JSON key-value format without quotes around value - "key": value
+            rf'(?i)"{re.escape(prefix)}"\s*:\s*([+-]?\d+)',
+            # Pattern 4: Flexible format - prefix anywhere followed by number
+            rf"(?i)\b{re.escape(prefix)}\s*[:\-]?\s*([+-]?\d+)",
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, response_text, re.MULTILINE)
+            if match:
+                return int(match.group(1))
+
+        return None
     else:
         # Search for the first standalone integer if no prefix is given
         number_search_result = re.search(r"[+-]?\d+", response_text)

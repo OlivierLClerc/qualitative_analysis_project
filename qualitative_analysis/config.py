@@ -79,11 +79,23 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
 # and 'completion' is the cost of output tokens.
 MODEL_PRICES: Dict[str, Dict[str, float]] = {
     # OpenAI models
-    "gpt-4o": {"prompt": 0.0025, "completion": 0.01},  # Pricing for GPT-4o model.
+    "gpt-4o": {"prompt": 0.0025, "completion": 0.01},
     "gpt-4o-mini": {
         "prompt": 0.00015,
         "completion": 0.0006,
-    },  # Pricing for GPT-4o-mini model.
+    },
+    "gpt-5": {
+        "prompt": 0.00125,
+        "completion": 0.01,
+    },  # $1.250/1M input, $10.000/1M output
+    "gpt-5-mini": {
+        "prompt": 0.00025,
+        "completion": 0.002,
+    },  # $0.250/1M input, $2.000/1M output
+    "gpt-5-nano": {
+        "prompt": 0.00005,
+        "completion": 0.0004,
+    },  # $0.050/1M input, $0.400/1M output
     # Anthropic models
     "claude-3-7-sonnet-20250219": {
         "prompt": 0.0030,

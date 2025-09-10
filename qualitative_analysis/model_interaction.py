@@ -38,8 +38,40 @@ import openai
 from anthropic import Anthropic
 from together import Together
 from types import SimpleNamespace
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import google.generativeai as genai
+
+
+def is_gpt5_model(model_name: str) -> bool:
+    """
+    Detect if a model is a GPT-5 variant that requires max_completion_tokens instead of max_tokens.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model to check
+
+    Returns
+    -------
+    bool
+        True if the model is a GPT-5 variant, False otherwise
+    """
+    if not model_name:
+        return False
+
+    model_lower = model_name.lower()
+    # Check for GPT-5 variants including mini, nano, and future versions
+    gpt5_patterns = [
+        "gpt-5",
+        "gpt5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt5-mini",
+        "gpt5-nano",
+    ]
+
+    return any(pattern in model_lower for pattern in gpt5_patterns)
+
 
 # Try to import vLLM, but handle the case when it's not available
 # This could be due to import errors or platform compatibility issues
@@ -108,8 +140,8 @@ class OpenAILLMClient(LLMClient):
 
     Attributes
     ----------
-    api_key : str
-        The OpenAI API key used for authentication.
+    client : openai.OpenAI
+        The OpenAI client instance used for API calls.
 
     Methods
     -------
@@ -127,10 +159,7 @@ class OpenAILLMClient(LLMClient):
         api_key : str
             The OpenAI API key to use (from OPENAI_API_KEY).
         """
-        openai.api_type = "openai"
-        openai.api_key = api_key
-        # You may optionally set `openai.organization` if needed:
-        # openai.organization = os.getenv("OPENAI_ORGANIZATION")
+        self.client = openai.OpenAI(api_key=api_key)
 
     def get_response(
         self, prompt: str, model: str, **kwargs
@@ -171,16 +200,31 @@ class OpenAILLMClient(LLMClient):
         if verbose:
             print(f"Prompt:\n{prompt}\n")
 
-        # Standard openai call:
-        response = openai.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        # Handle GPT-5 vs non-GPT-5 models with explicit API calls
+        # Type cast to satisfy MyPy - our dict structure matches OpenAI's expected format
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ]
+
+        if is_gpt5_model(model):
+            # GPT-5 only supports temperature=1 (default), so don't set temperature parameter
+            if verbose:
+                print(
+                    f"Note: GPT-5 model detected - using default temperature (1) instead of {temperature}"
+                )
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,  # type: ignore[arg-type]
+                max_completion_tokens=max_tokens,
+            )
+        else:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,  # type: ignore[arg-type]
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
 
         if verbose:
             print("\n=== LLM Response ===")
@@ -219,12 +263,8 @@ class AzureOpenAILLMClient(LLMClient):
 
     Attributes
     ----------
-    api_key : str
-        The Azure API key for authenticating with the Azure OpenAI service.
-    endpoint : str
-        The base URL endpoint for the Azure OpenAI service.
-    api_version : str
-        The API version to use when making requests, e.g. '2023-05-15'.
+    client : openai.AzureOpenAI
+        The Azure OpenAI client instance used for API calls.
 
     Methods:
     -------
@@ -234,7 +274,7 @@ class AzureOpenAILLMClient(LLMClient):
 
     def __init__(self, api_key: str, endpoint: str, api_version: str):
         """
-        Initializes the OpenAILLMClient with the required authentication and API configuration.
+        Initializes the AzureOpenAILLMClient with the required authentication and API configuration.
 
         Parameters:
         ----------
@@ -245,10 +285,11 @@ class AzureOpenAILLMClient(LLMClient):
         - api_version (str):
             The API version to use when making API requests.
         """
-        openai.api_type = "azure"
-        openai.api_key = api_key
-        openai.azure_endpoint = endpoint
-        openai.api_version = api_version
+        self.client = openai.AzureOpenAI(
+            api_key=api_key,
+            azure_endpoint=endpoint,
+            api_version=api_version,
+        )
 
     def get_response(
         self, prompt: str, model: str, **kwargs
@@ -288,15 +329,31 @@ class AzureOpenAILLMClient(LLMClient):
         if verbose:
             print(f"Prompt:\n{prompt}\n")
 
-        response = openai.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        # Handle GPT-5 vs non-GPT-5 models with explicit API calls
+        # Type cast to satisfy MyPy - our dict structure matches OpenAI's expected format
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ]
+
+        if is_gpt5_model(model):
+            # GPT-5 only supports temperature=1 (default), so don't set temperature parameter
+            if verbose:
+                print(
+                    f"Note: GPT-5 model detected - using default temperature (1) instead of {temperature}"
+                )
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,  # type: ignore[arg-type]
+                max_completion_tokens=max_tokens,
+            )
+        else:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,  # type: ignore[arg-type]
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
 
         if verbose:
             print("\n=== LLM Response ===")
@@ -544,7 +601,7 @@ class GeminiLLMClient(LLMClient):
         -------
         >>> client = GeminiLLMClient(api_key='your_api_key')
         """
-        genai.configure(api_key=api_key)
+        self.api_key = api_key
 
     def get_response(
         self, prompt: str, model: str, **kwargs
@@ -582,6 +639,9 @@ class GeminiLLMClient(LLMClient):
 
         if verbose:
             print(f"Prompt:\n{prompt}\n")
+
+        # Configure API key for this request to avoid global state conflicts
+        genai.configure(api_key=self.api_key)
 
         # Create a GenerativeModel instance
         gemini_model = genai.GenerativeModel(model)

@@ -176,6 +176,43 @@ def process_general_verbatims(
                         label_field if label_field is not None else "Classification"
                     )
                     label = parsed_fields.get(key_for_label, None)
+
+                    # Fallback: If JSON parsing failed for the primary label field, try prefix extraction
+                    if label is None and label_field is not None:
+                        if verbose:
+                            print(
+                                f"JSON parsing failed for '{key_for_label}', attempting prefix extraction with '{label_field}'"
+                            )
+                        label = extract_code_from_response(
+                            response_text, prefix=label_field
+                        )
+                        if label is not None and verbose:
+                            print(
+                                f"Successfully extracted label '{label}' using prefix method"
+                            )
+
+                        # Ultimate fallback: If prefix extraction also failed, try to extract any number from the response
+                        if label is None:
+                            if verbose:
+                                print(
+                                    "Prefix extraction also failed, attempting to extract any number from response"
+                                )
+                            # Look for any number in the response (0 or 1 for binary classification)
+                            import re
+
+                            numbers = re.findall(r"\b[01]\b", response_text)
+                            if numbers:
+                                # Take the last occurrence (often the final classification)
+                                label = int(numbers[-1])
+                                if verbose:
+                                    print(
+                                        f"Ultimate fallback extracted label '{label}' from numbers: {numbers}"
+                                    )
+                            else:
+                                if verbose:
+                                    print(
+                                        "No valid binary classification number (0 or 1) found in response"
+                                    )
                 else:
                     # Classic prefix-based mode
                     # extract_code_from_response is a helper you have elsewhere
