@@ -34,20 +34,19 @@ class UsageProtocol(Protocol):
 
 def openai_api_calculate_cost(usage: UsageProtocol, model: str = "gpt-4o") -> float:
     """
-    Calculate the cost of OpenAI API usage based on token consumption.
+    Calculate the cost of API usage based on token consumption.
 
     Parameters:
         usage (UsageProtocol): An object with token usage details, specifically:
             - prompt_tokens (int): Number of tokens used in the prompt.
             - completion_tokens (int): Number of tokens used in the completion.
             - total_tokens (int): Total tokens used (prompt + completion).
-        model (str): The OpenAI model name (default: "gpt-4o"). Must exist in `MODEL_PRICES`.
+        model (str): The model name (default: "gpt-4o"). If not found in `MODEL_PRICES`,
+                    uses a default estimate.
 
     Returns:
         float: The total API usage cost in USD, rounded to 6 decimal places.
-
-    Raises:
-        ValueError: If the specified model is not found in `MODEL_PRICES`.
+                For unknown models, returns a generic estimate based on total tokens.
 
     Example:
         >>> class MockUsage:
@@ -60,15 +59,27 @@ def openai_api_calculate_cost(usage: UsageProtocol, model: str = "gpt-4o") -> fl
         0.0075
 
     Notes:
-        The function assumes that the `MODEL_PRICES` dictionary contains pricing
-        details with keys "prompt" and "completion" for each model.
+        - For known models, uses exact pricing from `MODEL_PRICES` dictionary.
+        - For unknown models, uses a generic estimate of $1 per 1M tokens.
+        - Supports dynamic model usage without requiring pre-configuration.
     """
     pricing = MODEL_PRICES.get(model)
     if not pricing:
-        raise ValueError(f"Invalid model specified: {model}")
+        # Handle unknown models gracefully with a generic estimate
+        # Using $1 per 1M tokens as a reasonable default for cost estimation
+        default_cost_per_1k_tokens = 0.001  # $1 per 1M tokens = $0.001 per 1K tokens
+        estimated_cost = round(
+            usage.total_tokens * default_cost_per_1k_tokens / 1000, 6
+        )
 
+        # Optional: Print warning for debugging (can be removed if too verbose)
+        # print(f"Warning: No pricing data for model '{model}'. Using default estimate of ${estimated_cost:.6f}")
+
+        return estimated_cost
+
+    # Use exact pricing for known models
     prompt_cost: float = usage.prompt_tokens * pricing["prompt"] / 1000
     completion_cost: float = usage.completion_tokens * pricing["completion"] / 1000
-    total_cost: float = round(prompt_cost + completion_cost, 6)
+    calculated_cost: float = round(prompt_cost + completion_cost, 6)
 
-    return total_cost
+    return calculated_cost

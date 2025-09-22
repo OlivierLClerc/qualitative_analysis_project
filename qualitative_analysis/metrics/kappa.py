@@ -300,6 +300,7 @@ def compute_kappa_metrics(
     annotation_columns: List[str],
     labels: List[Any],
     kappa_weights: Optional[str] = None,
+    show_runs: bool = False,
 ) -> Tuple[pd.DataFrame, Dict[str, Dict[str, Any]]]:
     """
     Compute kappa metrics from detailed results DataFrame.
@@ -362,10 +363,69 @@ def compute_kappa_metrics(
         detailed_results_df, ["ModelPrediction"] + annotation_columns
     )
 
-    # Group by scenario, prompt_name, and iteration
-    grouped = detailed_results_df.groupby(["prompt_name", "iteration"])
+    # Determine grouping based on show_runs parameter
+    if show_runs:
+        # For show_runs=True, we need to handle both single and multi-iteration scenarios
+        # We'll process them separately to ensure proper grouping
 
-    for (prompt_name, iteration), group in grouped:
+        # Check if we have prompt_iteration column for iterative improvement
+        has_prompt_iteration = "prompt_iteration" in detailed_results_df.columns
+
+        if has_prompt_iteration:
+            # Split data into single-iteration and multi-iteration scenarios
+            single_iteration_data = detailed_results_df[
+                detailed_results_df["prompt_iteration"].isna()
+            ]
+            multi_iteration_data = detailed_results_df[
+                detailed_results_df["prompt_iteration"].notna()
+            ]
+
+            # Process single-iteration scenarios
+            single_grouped = (
+                single_iteration_data.groupby(["prompt_name", "iteration", "run"])
+                if not single_iteration_data.empty
+                else []
+            )
+
+            # Process multi-iteration scenarios
+            multi_grouped = (
+                multi_iteration_data.groupby(["prompt_name", "prompt_iteration", "run"])
+                if not multi_iteration_data.empty
+                else []
+            )
+
+            # Combine both groupings
+            all_groups = []
+
+            # Add single-iteration groups
+            for group_key, group in single_grouped:
+                prompt_name, iteration, run = group_key
+                all_groups.append((group_key, group, "single"))
+
+            # Add multi-iteration groups
+            for group_key, group in multi_grouped:
+                prompt_name, prompt_iteration, run = group_key
+                iteration = (
+                    prompt_iteration  # Use prompt_iteration as iteration for display
+                )
+                all_groups.append(((prompt_name, iteration, run), group, "multi"))
+        else:
+            # No prompt_iteration column, use standard grouping
+            grouped = detailed_results_df.groupby(["prompt_name", "iteration", "run"])
+            all_groups = [(group_key, group, "single") for group_key, group in grouped]
+    else:
+        # Group by scenario, prompt_name, and iteration (aggregated)
+        grouped = detailed_results_df.groupby(["prompt_name", "iteration"])
+        all_groups = [(group_key, group, "aggregated") for group_key, group in grouped]
+
+    for group_info in all_groups:
+        if show_runs:
+            group_key, group, group_type = group_info
+            prompt_name, iteration, run = group_key
+        else:
+            group_key, group, group_type = group_info
+            prompt_name, iteration = group_key
+            run = "aggregated"  # Mark as aggregated
         # Split data into train and validation sets
         train_data = group[group["split"] == "train"]
         val_data = group[group["split"] == "val"]
@@ -393,11 +453,21 @@ def compute_kappa_metrics(
         aggregated_metrics = {
             "prompt_name": prompt_name,
             "iteration": iteration,
-            "n_runs": len(set(group["run"])),
+            "run": run,  # Include run information
             "use_validation_set": use_validation_set,
             "N_train": len(train_data),
             "N_val": len(val_data) if use_validation_set else 0,
         }
+
+        # Add n_runs only for aggregated results
+        if run == "aggregated":
+            aggregated_metrics["n_runs"] = len(set(group["run"]))
+
+        # Add prompt iteration info if available
+        if "prompt_iteration" in detailed_results_df.columns and show_runs:
+            aggregated_metrics["prompt_iteration"] = (
+                group["prompt_iteration"].iloc[0] if len(group) > 0 else iteration
+            )
 
         # Compute metrics for train data
         if train_model_predictions and all(
@@ -517,7 +587,166 @@ def compute_kappa_metrics(
         # Add to the list of aggregated results
         all_aggregated_results.append(aggregated_metrics)
 
+    # If show_runs=True, we also need to create aggregated results for each scenario
+    if show_runs:
+        # Group by scenario to create aggregated results
+        scenario_grouped = detailed_results_df.groupby(["prompt_name", "iteration"])
+
+        for (prompt_name, iteration), scenario_group in scenario_grouped:
+            # Split data into train and validation sets
+            train_data = scenario_group[scenario_group["split"] == "train"]
+            val_data = scenario_group[scenario_group["split"] == "val"]
+
+            # Extract validation setting
+            use_validation_set = len(val_data) > 0
+            n_runs = len(set(scenario_group["run"]))
+
+            # Extract model predictions and human annotations for train data
+            train_model_predictions = train_data["ModelPrediction"].tolist()
+            train_human_annotations = {
+                col: train_data[col].tolist() for col in annotation_columns
+            }
+
+            # Extract model predictions and human annotations for validation data if available
+            val_model_predictions = (
+                val_data["ModelPrediction"].tolist() if use_validation_set else []
+            )
+            val_human_annotations = (
+                {col: val_data[col].tolist() for col in annotation_columns}
+                if use_validation_set
+                else {}
+            )
+
+            # Initialize aggregated metrics
+            aggregated_metrics = {
+                "prompt_name": prompt_name,
+                "iteration": int(iteration),  # Ensure iteration is int
+                "run": "aggregated",  # Mark as aggregated
+                "n_runs": n_runs,
+                "use_validation_set": use_validation_set,
+                "N_train": len(train_data),
+                "N_val": len(val_data) if use_validation_set else 0,
+            }
+
+            # Compute metrics for train data
+            if train_model_predictions and all(
+                len(annotations) > 0 for annotations in train_human_annotations.values()
+            ):
+                try:
+                    # Compute accuracy and kappa for train data
+                    train_ground_truth = compute_majority_vote(train_human_annotations)
+                    accuracy_train = accuracy_score(
+                        train_ground_truth, train_model_predictions
+                    )
+                    kappa_train = compute_cohens_kappa(
+                        train_ground_truth,
+                        train_model_predictions,
+                        labels=labels,
+                        weights=kappa_weights,
+                    )
+
+                    # Add basic metrics to aggregated_metrics with clearer naming
+                    aggregated_metrics["accuracy_GT_train"] = accuracy_train
+                    aggregated_metrics["kappa_GT_train"] = kappa_train
+
+                    # Compute detailed kappa metrics for train data
+                    train_kappa_metrics = compute_detailed_kappa_metrics(
+                        model_predictions=train_model_predictions,
+                        human_annotations=train_human_annotations,
+                        labels=labels,
+                        kappa_weights=kappa_weights,
+                    )
+
+                    # Add mean agreement scores to aggregated metrics with clearer naming
+                    aggregated_metrics["mean_kappa_llm_human"] = train_kappa_metrics[
+                        "mean_llm_human_agreement"
+                    ]
+                    aggregated_metrics["mean_human_human_agreement"] = (
+                        train_kappa_metrics["mean_human_human_agreement"]
+                    )
+
+                    # Compute individual human annotator metrics against ground truth (majority vote)
+                    for annotator_name, annotations in train_human_annotations.items():
+                        # Compute kappa of this human annotator vs ground truth
+                        human_kappa_gt = compute_cohens_kappa(
+                            train_ground_truth,
+                            annotations,
+                            labels=labels,
+                            weights=kappa_weights,
+                        )
+                        aggregated_metrics[f"{annotator_name}_kappa_GT"] = (
+                            human_kappa_gt
+                        )
+
+                except Exception as e:
+                    print(f"Error computing aggregated train kappa metrics: {e}")
+
+            # Compute metrics for validation data if available
+            if (
+                use_validation_set
+                and val_model_predictions
+                and all(
+                    len(annotations) > 0
+                    for annotations in val_human_annotations.values()
+                )
+            ):
+                try:
+                    # Compute accuracy and kappa for validation data
+                    val_ground_truth = compute_majority_vote(val_human_annotations)
+                    accuracy_val = accuracy_score(
+                        val_ground_truth, val_model_predictions
+                    )
+                    kappa_val = compute_cohens_kappa(
+                        val_ground_truth,
+                        val_model_predictions,
+                        labels=labels,
+                        weights=kappa_weights,
+                    )
+
+                    # Add basic metrics to aggregated_metrics with clearer naming
+                    aggregated_metrics["accuracy_GT_val"] = accuracy_val
+                    aggregated_metrics["kappa_GT_val"] = kappa_val
+
+                    # Compute detailed kappa metrics for validation data
+                    val_kappa_metrics = compute_detailed_kappa_metrics(
+                        model_predictions=val_model_predictions,
+                        human_annotations=val_human_annotations,
+                        labels=labels,
+                        kappa_weights=kappa_weights,
+                    )
+
+                    # Add mean agreement scores to aggregated metrics with clearer naming
+                    aggregated_metrics["mean_kappa_llm_human_val"] = val_kappa_metrics[
+                        "mean_llm_human_agreement"
+                    ]
+                    aggregated_metrics["mean_human_human_agreement_val"] = (
+                        val_kappa_metrics["mean_human_human_agreement"]
+                    )
+
+                    # Compute individual human annotator metrics against ground truth (majority vote) for validation
+                    for annotator_name, annotations in val_human_annotations.items():
+                        # Compute kappa of this human annotator vs ground truth
+                        human_kappa_gt = compute_cohens_kappa(
+                            val_ground_truth,
+                            annotations,
+                            labels=labels,
+                            weights=kappa_weights,
+                        )
+                        aggregated_metrics[f"{annotator_name}_kappa_GT_val"] = (
+                            human_kappa_gt
+                        )
+
+                except Exception as e:
+                    print(f"Error computing aggregated validation kappa metrics: {e}")
+
+            # Add aggregated results to the list
+            all_aggregated_results.append(aggregated_metrics)
+
     # Create DataFrame from the results
     summary_df = pd.DataFrame(all_aggregated_results)
+
+    # Ensure iteration column is int
+    if "iteration" in summary_df.columns:
+        summary_df["iteration"] = summary_df["iteration"].astype(int)
 
     return summary_df, detailed_kappa_metrics

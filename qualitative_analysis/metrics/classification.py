@@ -153,7 +153,10 @@ def compute_classification_metrics(
 
 
 def compute_classification_metrics_from_results(
-    detailed_results_df: pd.DataFrame, annotation_columns: List[str], labels: List[Any]
+    detailed_results_df: pd.DataFrame,
+    annotation_columns: List[str],
+    labels: List[Any],
+    show_runs: bool = False,
 ) -> pd.DataFrame:
     """
     Compute classification metrics from detailed results DataFrame.
@@ -204,10 +207,69 @@ def compute_classification_metrics_from_results(
         detailed_results_df, ["ModelPrediction"] + annotation_columns
     )
 
-    # Group by scenario, prompt_name, and iteration
-    grouped = detailed_results_df.groupby(["prompt_name", "iteration"])
+    # Determine grouping based on show_runs parameter
+    if show_runs:
+        # For show_runs=True, we need to handle both single and multi-iteration scenarios
+        # We'll process them separately to ensure proper grouping
 
-    for (prompt_name, iteration), group in grouped:
+        # Check if we have prompt_iteration column for iterative improvement
+        has_prompt_iteration = "prompt_iteration" in detailed_results_df.columns
+
+        if has_prompt_iteration:
+            # Split data into single-iteration and multi-iteration scenarios
+            single_iteration_data = detailed_results_df[
+                detailed_results_df["prompt_iteration"].isna()
+            ]
+            multi_iteration_data = detailed_results_df[
+                detailed_results_df["prompt_iteration"].notna()
+            ]
+
+            # Process single-iteration scenarios
+            single_grouped = (
+                single_iteration_data.groupby(["prompt_name", "iteration", "run"])
+                if not single_iteration_data.empty
+                else []
+            )
+
+            # Process multi-iteration scenarios
+            multi_grouped = (
+                multi_iteration_data.groupby(["prompt_name", "prompt_iteration", "run"])
+                if not multi_iteration_data.empty
+                else []
+            )
+
+            # Combine both groupings
+            all_groups = []
+
+            # Add single-iteration groups
+            for group_key, group in single_grouped:
+                prompt_name, iteration, run = group_key
+                all_groups.append((group_key, group, "single"))
+
+            # Add multi-iteration groups
+            for group_key, group in multi_grouped:
+                prompt_name, prompt_iteration, run = group_key
+                iteration = (
+                    prompt_iteration  # Use prompt_iteration as iteration for display
+                )
+                all_groups.append(((prompt_name, iteration, run), group, "multi"))
+        else:
+            # No prompt_iteration column, use standard grouping
+            grouped = detailed_results_df.groupby(["prompt_name", "iteration", "run"])
+            all_groups = [(group_key, group, "single") for group_key, group in grouped]
+    else:
+        # Group by scenario, prompt_name, and iteration (aggregated)
+        grouped = detailed_results_df.groupby(["prompt_name", "iteration"])
+        all_groups = [(group_key, group, "aggregated") for group_key, group in grouped]
+
+    for group_info in all_groups:
+        if show_runs:
+            group_key, group, group_type = group_info
+            prompt_name, iteration, run = group_key
+        else:
+            group_key, group, group_type = group_info
+            prompt_name, iteration = group_key
+            run = "aggregated"  # Mark as aggregated
         # Split data into train and validation sets
         train_data = group[group["split"] == "train"]
         val_data = group[group["split"] == "val"]
@@ -235,11 +297,21 @@ def compute_classification_metrics_from_results(
         aggregated_metrics = {
             "prompt_name": prompt_name,
             "iteration": iteration,
-            "n_runs": len(set(group["run"])),
+            "run": run,  # Include run information
             "use_validation_set": use_validation_set,
             "N_train": len(train_data),
             "N_val": len(val_data) if use_validation_set else 0,
         }
+
+        # Add n_runs only for aggregated results
+        if run == "aggregated":
+            aggregated_metrics["n_runs"] = len(set(group["run"]))
+
+        # Add prompt iteration info if available
+        if "prompt_iteration" in detailed_results_df.columns and show_runs:
+            aggregated_metrics["prompt_iteration"] = (
+                group["prompt_iteration"].iloc[0] if len(group) > 0 else iteration
+            )
 
         # Compute metrics for train data
         if train_model_predictions and all(
@@ -308,7 +380,124 @@ def compute_classification_metrics_from_results(
         # Add to the list of aggregated results
         all_aggregated_results.append(aggregated_metrics)
 
+    # If show_runs=True, we also need to create aggregated results for each scenario
+    if show_runs:
+        # Group by scenario to create aggregated results
+        scenario_grouped = detailed_results_df.groupby(["prompt_name", "iteration"])
+
+        for (prompt_name, iteration), scenario_group in scenario_grouped:
+            # Split data into train and validation sets
+            train_data = scenario_group[scenario_group["split"] == "train"]
+            val_data = scenario_group[scenario_group["split"] == "val"]
+
+            # Extract validation setting
+            use_validation_set = len(val_data) > 0
+            n_runs = len(set(scenario_group["run"]))
+
+            # Extract model predictions and human annotations for train data
+            train_model_predictions = train_data["ModelPrediction"].tolist()
+            train_human_annotations = {
+                col: train_data[col].tolist() for col in annotation_columns
+            }
+
+            # Extract model predictions and human annotations for validation data if available
+            val_model_predictions = (
+                val_data["ModelPrediction"].tolist() if use_validation_set else []
+            )
+            val_human_annotations = (
+                {col: val_data[col].tolist() for col in annotation_columns}
+                if use_validation_set
+                else {}
+            )
+
+            # Initialize aggregated metrics
+            aggregated_metrics = {
+                "prompt_name": prompt_name,
+                "iteration": int(iteration),  # Ensure iteration is int
+                "run": "aggregated",  # Mark as aggregated
+                "n_runs": n_runs,
+                "use_validation_set": use_validation_set,
+                "N_train": len(train_data),
+                "N_val": len(val_data) if use_validation_set else 0,
+            }
+
+            # Compute metrics for train data
+            if train_model_predictions and all(
+                len(annotations) > 0 for annotations in train_human_annotations.values()
+            ):
+                try:
+                    # Compute classification metrics for train data
+                    train_classification_results = compute_classification_metrics(
+                        model_coding=train_model_predictions,
+                        human_annotations=train_human_annotations,
+                        labels=labels,
+                    )
+
+                    # Add global metrics to aggregated_metrics
+                    for metric_name, metric_value in train_classification_results[
+                        "global_metrics"
+                    ]["model"].items():
+                        aggregated_metrics[f"global_{metric_name}_train"] = metric_value
+
+                    # Add per-class metrics
+                    for label, class_metrics in train_classification_results[
+                        "per_class_metrics"
+                    ].items():
+                        for metric_name, metric_value in class_metrics["model"].items():
+                            aggregated_metrics[f"class_{label}_{metric_name}_train"] = (
+                                metric_value
+                            )
+
+                except Exception as e:
+                    print(
+                        f"Error computing aggregated train classification metrics: {e}"
+                    )
+
+            # Compute metrics for validation data if available
+            if (
+                use_validation_set
+                and val_model_predictions
+                and all(
+                    len(annotations) > 0
+                    for annotations in val_human_annotations.values()
+                )
+            ):
+                try:
+                    # Compute classification metrics for validation data
+                    val_classification_results = compute_classification_metrics(
+                        model_coding=val_model_predictions,
+                        human_annotations=val_human_annotations,
+                        labels=labels,
+                    )
+
+                    # Add global metrics to aggregated_metrics
+                    for metric_name, metric_value in val_classification_results[
+                        "global_metrics"
+                    ]["model"].items():
+                        aggregated_metrics[f"global_{metric_name}_val"] = metric_value
+
+                    # Add per-class metrics
+                    for label, class_metrics in val_classification_results[
+                        "per_class_metrics"
+                    ].items():
+                        for metric_name, metric_value in class_metrics["model"].items():
+                            aggregated_metrics[f"class_{label}_{metric_name}_val"] = (
+                                metric_value
+                            )
+
+                except Exception as e:
+                    print(
+                        f"Error computing aggregated validation classification metrics: {e}"
+                    )
+
+            # Add aggregated results to the list
+            all_aggregated_results.append(aggregated_metrics)
+
     # Create DataFrame from the results
     summary_df = pd.DataFrame(all_aggregated_results)
+
+    # Ensure iteration column is int
+    if "iteration" in summary_df.columns:
+        summary_df["iteration"] = summary_df["iteration"].astype(int)
 
     return summary_df

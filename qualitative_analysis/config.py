@@ -71,6 +71,9 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
     "gemini": {
         "api_key": os.getenv("GEMINI_API_KEY"),
     },
+    "openrouter": {
+        "api_key": os.getenv("OPENROUTER_API_KEY"),
+    },
 }
 
 
@@ -114,6 +117,19 @@ MODEL_PRICES: Dict[str, Dict[str, float]] = {
         "prompt": 0.00005,  # Example: $0.50 per million input tokens
         "completion": 0.0001,  # Example: $1.00 per million output tokens
     },
+    # Common OpenRouter models (pricing may vary - check https://openrouter.ai/models for current rates)
+    # Note: For models not listed here, cost estimation will show a generic message
+    "openai/gpt-4o": {"prompt": 0.0025, "completion": 0.01},
+    "openai/gpt-4o-mini": {"prompt": 0.00015, "completion": 0.0006},
+    "anthropic/claude-3.5-sonnet": {"prompt": 0.003, "completion": 0.015},
+    "anthropic/claude-3.7-sonnet": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },  # Added for your model
+    "anthropic/claude-3-haiku": {"prompt": 0.00025, "completion": 0.00125},
+    "meta-llama/llama-3.1-8b-instruct": {"prompt": 0.00018, "completion": 0.00018},
+    "meta-llama/llama-3.1-70b-instruct": {"prompt": 0.00088, "completion": 0.00088},
+    "google/gemini-2.0-flash-001": {"prompt": 0.000075, "completion": 0.0003},
 }
 
 # NOTE:

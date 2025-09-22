@@ -476,6 +476,7 @@ def run_alt_test_on_results(
     epsilon: float = 0.2,
     alpha: float = 0.05,
     verbose: bool = True,
+    show_runs: bool = False,
 ) -> pd.DataFrame:
     """
     Run ALT test on detailed results DataFrame.
@@ -530,16 +531,80 @@ def run_alt_test_on_results(
         # Return empty DataFrame
         return pd.DataFrame()
 
-    # First, compute ALT test for each run separately
-    # Group by scenario, prompt_name, iteration, and run
-    per_run_grouped = detailed_results_df.groupby(["prompt_name", "iteration", "run"])
+    # Determine grouping based on show_runs parameter
+    if show_runs:
+        # For show_runs=True, we need to handle both single and multi-iteration scenarios
+        # We'll process them separately to ensure proper grouping
+
+        # Check if we have prompt_iteration column for iterative improvement
+        has_prompt_iteration = "prompt_iteration" in detailed_results_df.columns
+
+        if has_prompt_iteration:
+            # Split data into single-iteration and multi-iteration scenarios
+            single_iteration_data = detailed_results_df[
+                detailed_results_df["prompt_iteration"].isna()
+            ]
+            multi_iteration_data = detailed_results_df[
+                detailed_results_df["prompt_iteration"].notna()
+            ]
+
+            # Process single-iteration scenarios
+            single_grouped = (
+                single_iteration_data.groupby(["prompt_name", "iteration", "run"])
+                if not single_iteration_data.empty
+                else []
+            )
+
+            # Process multi-iteration scenarios
+            multi_grouped = (
+                multi_iteration_data.groupby(["prompt_name", "prompt_iteration", "run"])
+                if not multi_iteration_data.empty
+                else []
+            )
+
+            # Combine both groupings
+            all_per_run_groups = []
+
+            # Add single-iteration groups
+            for group_key, group in single_grouped:
+                prompt_name, iteration, run = group_key
+                all_per_run_groups.append((group_key, group, "single"))
+
+            # Add multi-iteration groups
+            for group_key, group in multi_grouped:
+                prompt_name, prompt_iteration, run = group_key
+                iteration = (
+                    prompt_iteration  # Use prompt_iteration as iteration for display
+                )
+                all_per_run_groups.append(
+                    ((prompt_name, iteration, run), group, "multi")
+                )
+        else:
+            # No prompt_iteration column, use standard grouping
+            per_run_grouped = detailed_results_df.groupby(
+                ["prompt_name", "iteration", "run"]
+            )
+            all_per_run_groups = [
+                (group_key, group, "single") for group_key, group in per_run_grouped
+            ]
+    else:
+        # For aggregated results, we still need to process individual runs first
+        per_run_grouped = detailed_results_df.groupby(
+            ["prompt_name", "iteration", "run"]
+        )
+        all_per_run_groups = [
+            (group_key, group, "single") for group_key, group in per_run_grouped
+        ]
 
     # Store p-values for each annotator for each run
     p_values_by_run: Dict[
         Tuple[str, int, str], List[Tuple[int, List[float], List[str]]]
     ] = {}
 
-    for (prompt_name, iteration, run), group in per_run_grouped:
+    for group_info in all_per_run_groups:
+        group_key, group, group_type = group_info
+        prompt_name, iteration, run = group_key
+
         # Split data into train and validation sets
         train_data = group[group["split"] == "train"]
         val_data = group[group["split"] == "val"]
@@ -550,12 +615,18 @@ def run_alt_test_on_results(
         # Initialize metrics for this run
         run_metrics = {
             "prompt_name": prompt_name,
-            "iteration": iteration,
+            "iteration": int(iteration),  # Ensure iteration is int
             "run": run,
             "use_validation_set": use_validation_set,
             "N_train": len(train_data),
             "N_val": len(val_data) if use_validation_set else 0,
         }
+
+        # Add prompt iteration info if available
+        if "prompt_iteration" in detailed_results_df.columns and show_runs:
+            run_metrics["prompt_iteration"] = (
+                group["prompt_iteration"].iloc[0] if len(group) > 0 else iteration
+            )
 
         # Run ALT test for train data
         try:
@@ -837,7 +908,7 @@ def run_alt_test_on_results(
                     aggregated_metrics["avg_adv_prob_val"] = avg_adv_prob
                     aggregated_metrics["p_values_val"] = avg_p_values
 
-        # Add aggregated metrics to the results
+        # Always add aggregated metrics to the results
         all_results.append(aggregated_metrics)
 
     # Create DataFrame from the results

@@ -8,12 +8,13 @@ including:
     - Azure OpenAI
     - Anthropic
     - Together AI
+    - OpenRouter
     - vLLM (for open-source models)
 
 It abstracts API interactions to simplify sending prompts and retrieving responses across multiple providers.
 
 Dependencies:
-    - openai: For interacting with Azure OpenAI or standard OpenAI models.
+    - openai: For interacting with Azure OpenAI, standard OpenAI models, and OpenRouter.
     - anthropic: For interacting with Anthropic Claude models.
     - together: For interacting with Together AI models.
     - vllm: For running inference with open-source models locally.
@@ -26,6 +27,7 @@ Classes:
     - AzureOpenAILLMClient: Client for interacting with Azure OpenAI language models.
     - AnthropicLLMClient: Client for interacting with Anthropic Claude models.
     - TogetherLLMClient: Client for interacting with Together AI language models.
+    - OpenRouterLLMClient: Client for interacting with OpenRouter language models.
     - VLLMLLMClient: Client for interacting with open-source models using vLLM.
 
 Functions:
@@ -672,6 +674,143 @@ class GeminiLLMClient(LLMClient):
         return content_text, usage_obj
 
 
+class OpenRouterLLMClient(LLMClient):
+    """
+    Client for interacting with OpenRouter language models.
+
+    This class manages communication with the OpenRouter API, which provides access to
+    multiple language model providers through a unified OpenAI-compatible interface.
+    It handles authentication via an OpenRouter API key.
+
+    Attributes:
+    ----------
+    - client (openai.OpenAI):
+        An OpenAI client instance configured for OpenRouter's API endpoint.
+
+    Methods:
+    -------
+    - get_response(prompt, model, **kwargs):
+        Sends a prompt to the OpenRouter language model and retrieves the response.
+    """
+
+    def __init__(self, api_key: str, base_url: str = "https://openrouter.ai/api/v1"):
+        """
+        Initializes the OpenRouterLLMClient with the provided API key.
+
+        Parameters:
+        ----------
+        - api_key (str):
+            The API key for the OpenRouter service.
+        - base_url (str):
+            The base URL for OpenRouter API (default: "https://openrouter.ai/api/v1").
+
+        Example:
+        -------
+        >>> client = OpenRouterLLMClient(api_key='your_openrouter_api_key')
+        """
+        self.client = openai.OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+        )
+
+    def get_response(
+        self, prompt: str, model: str, **kwargs
+    ) -> tuple[str, SimpleNamespace]:
+        """
+        Sends a prompt to the OpenRouter language model and retrieves the response.
+
+        Parameters:
+        ----------
+        - prompt (str):
+            The input text prompt to send to the language model.
+        - model (str):
+            The identifier of the OpenRouter model to use (e.g., "anthropic/claude-3.5-sonnet", "openai/gpt-4o").
+        - **kwargs:
+            Additional keyword arguments for the OpenRouter API call, such as:
+                - temperature (float): Controls the randomness of the output (default is 0.0).
+                - max_tokens (int): The maximum number of tokens to generate (default is 500).
+                - verbose (bool): If True, prints the prompt and response for debugging (default is False).
+
+        Returns:
+        -------
+        - tuple[str, SimpleNamespace]:
+            A tuple containing:
+                - The model's generated response (str).
+                - A usage object with token counts (SimpleNamespace).
+
+        Raises:
+        ------
+        - openai.error.OpenAIError:
+            If the API request fails (e.g., invalid model name, insufficient credits).
+        """
+        temperature = kwargs.get("temperature", 0.0)
+        max_tokens = kwargs.get("max_tokens", 500)
+        verbose = kwargs.get("verbose", False)
+
+        if verbose:
+            print(f"Prompt:\n{prompt}\n")
+
+        # Type cast to satisfy MyPy - our dict structure matches OpenAI's expected format
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ]
+
+        try:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,  # type: ignore[arg-type]
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+            if verbose:
+                print("\n=== LLM Response ===")
+                print(f"{response.choices[0].message.content}\n")
+
+            content = response.choices[0].message.content
+
+            # Convert usage object to a SimpleNamespace for consistency with other clients
+            if response.usage:
+                usage_obj = SimpleNamespace(
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    total_tokens=response.usage.total_tokens,
+                )
+            else:
+                # Fallback if usage is not available
+                usage_obj = SimpleNamespace(
+                    prompt_tokens=len(prompt.split()),  # Very rough estimate
+                    completion_tokens=(
+                        len(content.split()) if content else 0
+                    ),  # Very rough estimate
+                    total_tokens=len(prompt.split())
+                    + (len(content.split()) if content else 0),
+                )
+
+            return (content.strip() if content else ""), usage_obj
+
+        except Exception as e:
+            # Provide helpful error messages for common OpenRouter issues
+            error_msg = str(e).lower()
+            if "model" in error_msg and (
+                "not found" in error_msg or "invalid" in error_msg
+            ):
+                raise ValueError(
+                    f"Model '{model}' not found on OpenRouter. "
+                    f"Please check the model name or your OpenRouter account access. "
+                    f"Visit https://openrouter.ai/models for available models."
+                ) from e
+            elif "insufficient" in error_msg or "credit" in error_msg:
+                raise ValueError(
+                    "Insufficient credits on OpenRouter account. "
+                    "Please add credits at https://openrouter.ai/credits"
+                ) from e
+            else:
+                # Re-raise the original exception for other errors
+                raise
+
+
 class VLLMLLMClient(LLMClient):
     """
     Client for interacting with open-source language models using vLLM.
@@ -813,6 +952,7 @@ def get_llm_client(
             - 'anthropic': For Anthropic Claude models.
             - 'gemini': For Google Gemini models.
             - 'together': For Together AI models.
+            - 'openrouter': For OpenRouter models.
             - 'vllm': For open-source models using vLLM.
 
     config : dict
@@ -877,6 +1017,8 @@ def get_llm_client(
         return GeminiLLMClient(api_key=config["api_key"])
     elif provider == "together":
         return TogetherLLMClient(api_key=config["api_key"])
+    elif provider == "openrouter":
+        return OpenRouterLLMClient(api_key=config["api_key"])
     elif provider == "vllm":
         if not VLLM_AVAILABLE:
             raise ImportError(

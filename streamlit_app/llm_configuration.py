@@ -36,6 +36,7 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             "Anthropic",
             "Gemini",
             "Together",
+            "OpenRouter",
             "Azure",
         ]
         selected_provider_display = st.selectbox(
@@ -51,6 +52,7 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             "Anthropic": "anthropic",
             "Gemini": "gemini",
             "Together": "together",
+            "OpenRouter": "openrouter",
             "Azure": "azure",
         }
         internal_provider = provider_map[selected_provider_display]
@@ -68,6 +70,7 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
                 "anthropic": "sk-ant-...",
                 "gemini": "your-gemini-api-key",
                 "together": "together-...",
+                "openrouter": "sk-or-...",
                 "azure": "azure-...",
             }.get(internal_provider, "Enter API Key")
 
@@ -97,22 +100,72 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
         )
 
         # Select model
-        if selected_provider_display == "OpenAI":
+        if selected_provider_display == "OpenRouter":
+            # For OpenRouter, use text input to allow any model name
+            st.markdown(
+                """
+                **OpenRouter Model Selection**
+                
+                Enter the full model name in the format `provider/model-name`. 
+                Visit [OpenRouter Models](https://openrouter.ai/models) to see all available models.
+                """
+            )
+
+            chosen_model = st.text_input(
+                "Enter OpenRouter Model Name:",
+                value=st.session_state.get(
+                    "selected_model", "anthropic/claude-3.5-sonnet"
+                ),
+                placeholder="anthropic/claude-3.5-sonnet",
+                key="openrouter_model_input",
+                help="Format: provider/model-name (e.g., anthropic/claude-3.5-sonnet)",
+            )
+
+            if not chosen_model.strip():
+                st.warning("Please enter a model name to continue.")
+                return None
+
+            if "/" not in chosen_model:
+                st.warning(
+                    "Model name should be in format 'provider/model-name' (e.g., 'anthropic/claude-3.5-sonnet')"
+                )
+                return None
+
+        elif selected_provider_display == "OpenAI":
             model_options = ["gpt-4o", "gpt-4o-mini"]
+            chosen_model = st.selectbox(
+                "Select Model:",
+                model_options,
+                key="llm_model_select",
+            )
         elif selected_provider_display == "Anthropic":
             model_options = ["claude-3-7-sonnet-20250219", "claude-3-5-haiku-20241022"]
+            chosen_model = st.selectbox(
+                "Select Model:",
+                model_options,
+                key="llm_model_select",
+            )
         elif selected_provider_display == "Gemini":
             model_options = ["gemini-2.0-flash-001", "gemini-2.5-pro-preview-03-25"]
+            chosen_model = st.selectbox(
+                "Select Model:",
+                model_options,
+                key="llm_model_select",
+            )
         elif selected_provider_display == "Together":
             model_options = ["gpt-neoxt-chat-20B"]
+            chosen_model = st.selectbox(
+                "Select Model:",
+                model_options,
+                key="llm_model_select",
+            )
         else:  # Azure
             model_options = ["gpt-4o", "gpt-4o-mini"]
-
-        chosen_model = st.selectbox(
-            "Select Model:",
-            model_options,
-            key="llm_model_select",
-        )
+            chosen_model = st.selectbox(
+                "Select Model:",
+                model_options,
+                key="llm_model_select",
+            )
 
         app_instance.selected_model = chosen_model
         st.session_state["selected_model"] = chosen_model
