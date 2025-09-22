@@ -39,14 +39,14 @@ Yet, despite its importance, IRR is often skipped, misreported, or calculated wi
 ## How It Works
 
 ### 1. **Manual Annotation**
-Use the `Manual Annotator` web app to label a subset of your dataset if you need to.  
+Use the [**Manual annotator App**](https://datannotate.streamlit.app/) to label a subset of your dataset if you need to.  
 This serves as a reference to evaluate model performance.
 
 ### 2. **Automated Annotation**
 
 You can choose between:
 
-- **Web App** (`LLM4Humanities`):  
+- **Web App** [**(LLM4Humanities)**](https://flowanalysis.streamlit.app/):  
   - Configure prompts and LLM providers  
   - Run classification scenarios on your labeled subset  
   - Measure agreement between model and human coders  
