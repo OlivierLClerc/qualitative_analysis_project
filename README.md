@@ -10,7 +10,7 @@ It provides an end-to-end workflow that combines **manual coding**, **automated 
 - Supports **manual** and **automatic** annotation of qualitative data
 - Built-in evaluation metrics to compare human and model agreement
 - Designed for **multi-class**, and **binary** classification
-- Compatible with **OpenAI**, **Anthropic**, **Gemini** and **Azure** API keys
+- Compatible with **OpenRouter**, **OpenAI**, **Anthropic**, **Gemini** and **Azure** API keys
 
 # Table of Contents
 - [Why this tool](#why-this-tool)
