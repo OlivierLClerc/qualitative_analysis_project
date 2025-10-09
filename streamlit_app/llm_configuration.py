@@ -9,26 +9,56 @@ from qualitative_analysis import get_llm_client
 import qualitative_analysis.config as config
 
 
-def configure_llm(app_instance: Any) -> Optional[Any]:
+def configure_llm(
+    app_instance: Any, step_number: int = 5, purpose: str = ""
+) -> Optional[Any]:
     """
-    Step 5: Choose the Model
+    Choose the Model
     Lets the user pick the LLM provider, supply an API key (if not in .env),
     and choose a model.
 
     Args:
         app_instance: The QualitativeAnalysisApp instance
+        step_number: The step number to display (default=5 for annotation mode)
+        purpose: Optional purpose label (e.g., "for Generation", "for Annotation")
 
     Returns:
         The LLM client or None if configuration is incomplete
     """
-    st.markdown("### Step 5: Choose the Model", unsafe_allow_html=True)
-    with st.expander("Show/hide details of step 5", expanded=True):
-        # 🚨 Block Step 5 if Step 4 is incomplete
-        if not app_instance.selected_fields:
+    title = f"### Step {step_number}: Choose the Model"
+    if purpose:
+        title += f" {purpose}"
+    st.markdown(title, unsafe_allow_html=True)
+    with st.expander(f"Show/hide details of step {step_number}", expanded=True):
+        # Dependency validation based on context
+        # For annotation mode (step_number=5), check if fields are defined
+        if step_number == 5 and not app_instance.selected_fields:
             st.warning(
                 "⚠️ Please specify at least one field to extract in Step 4 before continuing."
             )
             return None
+
+        # For generation mode step 3 (generation LLM), check if generation config exists
+        if step_number == 3 and purpose == "for Generation":
+            if (
+                not hasattr(app_instance, "generation_config")
+                or not app_instance.generation_config
+            ):
+                st.warning(
+                    "⚠️ Please configure generation settings in Step 2 before continuing."
+                )
+                return None
+
+        # For generation mode step 8 (annotation LLM), check if codebook and fields are defined
+        if step_number == 8 and purpose == "for Annotation":
+            if not app_instance.codebook or not app_instance.codebook.strip():
+                st.warning("⚠️ Please provide a codebook in Step 6 before continuing.")
+                return None
+            if not app_instance.selected_fields:
+                st.warning(
+                    "⚠️ Please specify fields to extract in Step 7 before continuing."
+                )
+                return None
 
         provider_options = [
             "Select Provider",
@@ -39,8 +69,12 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             "OpenRouter",
             "Azure",
         ]
+
+        # Make key unique based on step number
+        provider_key = f"llm_provider_select_step{step_number}"
+
         selected_provider_display = st.selectbox(
-            "Select LLM Provider:", provider_options, key="llm_provider_select"
+            "Select LLM Provider:", provider_options, key=provider_key
         )
 
         if selected_provider_display == "Select Provider":
@@ -99,7 +133,9 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             provider=internal_provider, config=provider_config
         )
 
-        # Select model
+        # Select model - make keys unique based on step number
+        model_key = f"llm_model_select_step{step_number}"
+
         if selected_provider_display == "OpenRouter":
             # For OpenRouter, use text input to allow any model name
             st.markdown(
@@ -117,7 +153,7 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
                     "selected_model", "anthropic/claude-3.5-sonnet"
                 ),
                 placeholder="anthropic/claude-3.5-sonnet",
-                key="openrouter_model_input",
+                key=f"openrouter_model_input_step{step_number}",
                 help="Format: provider/model-name (e.g., anthropic/claude-3.5-sonnet)",
             )
 
@@ -136,35 +172,35 @@ def configure_llm(app_instance: Any) -> Optional[Any]:
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
-                key="llm_model_select",
+                key=model_key,
             )
         elif selected_provider_display == "Anthropic":
             model_options = ["claude-3-7-sonnet-20250219", "claude-3-5-haiku-20241022"]
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
-                key="llm_model_select",
+                key=model_key,
             )
         elif selected_provider_display == "Gemini":
             model_options = ["gemini-2.0-flash-001", "gemini-2.5-pro-preview-03-25"]
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
-                key="llm_model_select",
+                key=model_key,
             )
         elif selected_provider_display == "Together":
             model_options = ["gpt-neoxt-chat-20B"]
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
-                key="llm_model_select",
+                key=model_key,
             )
         else:  # Azure
             model_options = ["gpt-4o", "gpt-4o-mini"]
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
-                key="llm_model_select",
+                key=model_key,
             )
 
         app_instance.selected_model = chosen_model

@@ -72,6 +72,16 @@ def load_previous_session(app_instance: Any) -> None:
             app_instance.label_type = label_type
             app_instance.text_columns = text_columns
 
+            # Load generation mode data
+            selected_mode = session_data.get("selected_mode", "Annotation Mode")
+            blueprints = session_data.get("blueprints", [])
+            generation_config = session_data.get("generation_config", None)
+            annotation_config = session_data.get("annotation_config", None)
+
+            app_instance.blueprints = blueprints
+            app_instance.generation_config = generation_config
+            app_instance.annotation_config = annotation_config
+
             # Update session_state
             st.session_state["selected_columns"] = app_instance.selected_columns
             st.session_state["column_renames"] = app_instance.column_renames
@@ -84,6 +94,43 @@ def load_previous_session(app_instance: Any) -> None:
             st.session_state["label_column"] = label_column
             st.session_state["label_type"] = label_type
             st.session_state["text_columns"] = text_columns
+
+            # Update generation mode session state
+            st.session_state["selected_mode"] = selected_mode
+            st.session_state["selected_mode_index"] = (
+                ["Annotation Mode", "Generation Mode"].index(selected_mode)
+                if selected_mode in ["Annotation Mode", "Generation Mode"]
+                else 0
+            )
+            st.session_state["blueprints"] = blueprints
+            st.session_state["generation_config"] = generation_config
+            st.session_state["annotation_config"] = annotation_config
+
+            # Restore generation UI state if applicable
+            if generation_config:
+                st.session_state["generation_prompt"] = generation_config.get(
+                    "generation_prompt", ""
+                )
+                st.session_state["num_items_to_generate"] = generation_config.get(
+                    "num_items", 5
+                )
+                st.session_state["generation_temperature"] = generation_config.get(
+                    "temperature", 0.7
+                )
+                st.session_state["generation_max_tokens"] = generation_config.get(
+                    "max_tokens", 500
+                )
+
+            if annotation_config:
+                st.session_state["annotation_prompt"] = annotation_config.get(
+                    "annotation_prompt", ""
+                )
+                st.session_state["annotation_temperature"] = annotation_config.get(
+                    "annotation_temperature", 0.0
+                )
+                st.session_state["annotation_max_tokens"] = annotation_config.get(
+                    "annotation_max_tokens", 300
+                )
 
             st.success("✅ Previous session successfully loaded!")
 
@@ -141,6 +188,11 @@ def save_session(app_instance: Any) -> None:
         "label_column": app_instance.label_column,
         "label_type": app_instance.label_type,
         "text_columns": app_instance.text_columns,
+        # Generation mode data
+        "selected_mode": st.session_state.get("selected_mode", "Annotation Mode"),
+        "blueprints": getattr(app_instance, "blueprints", []),
+        "generation_config": getattr(app_instance, "generation_config", None),
+        "annotation_config": getattr(app_instance, "annotation_config", None),
     }
 
     data_json = json.dumps(session_data, indent=4)

@@ -6,20 +6,21 @@ import streamlit as st
 from typing import Any, Tuple
 
 
-def codebook_and_examples(app_instance: Any) -> Tuple[str, str]:
+def codebook_and_examples(app_instance: Any, step_number: int = 3) -> Tuple[str, str]:
     """
-    Step 3: Codebook & Examples
+    Codebook & Examples
     Lets the user define or modify the classification codebook and (optionally) examples
     that guide the LLM in producing structured responses.
 
     Args:
         app_instance: The QualitativeAnalysisApp instance
+        step_number: The step number to display (default=3 for annotation mode)
 
     Returns:
         A tuple containing the codebook and examples
     """
-    st.markdown("### Step 3: Codebook & Examples", unsafe_allow_html=True)
-    with st.expander("Show/hide details of step 3", expanded=True):
+    st.markdown(f"### Step {step_number}: Codebook & Examples", unsafe_allow_html=True)
+    with st.expander(f"Show/hide details of step {step_number}", expanded=True):
         # Guidance on how to write the codebook and examples
         st.markdown(
             """

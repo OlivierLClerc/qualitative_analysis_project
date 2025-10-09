@@ -7,21 +7,22 @@ from typing import Any, List
 from streamlit_app.session_management import save_session
 
 
-def select_fields(app_instance: Any) -> List[str]:
+def select_fields(app_instance: Any, step_number: int = 4) -> List[str]:
     """
-    Step 4: Fields to Extract
+    Fields to Extract
     Allows the user to specify which fields (e.g., 'Evaluation', 'Comments')
     the LLM should return in its JSON output.
     Also asks which field is the label column.
 
     Args:
         app_instance: The QualitativeAnalysisApp instance
+        step_number: The step number to display (default=4 for annotation mode)
 
     Returns:
         A list of selected fields
     """
-    st.markdown("### Step 4: Fields to Extract", unsafe_allow_html=True)
-    with st.expander("Show/hide details of step 4", expanded=True):
+    st.markdown(f"### Step {step_number}: Fields to Extract", unsafe_allow_html=True)
+    with st.expander(f"Show/hide details of step {step_number}", expanded=True):
         st.markdown(
             """
             Specify the **fields** (or categories) you want the model to generate for each entry.
