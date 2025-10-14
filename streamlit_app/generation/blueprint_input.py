@@ -8,7 +8,7 @@ from typing import Any, Optional, Dict
 
 def blueprint_input(app_instance: Any) -> Optional[Dict[str, str]]:
     """
-    Step 1: Blueprint/Reference Input
+    Step 1: Reference Input
     Allows users to provide reference examples that will guide the content generation.
 
     Args:
@@ -21,7 +21,7 @@ def blueprint_input(app_instance: Any) -> Optional[Dict[str, str]]:
     with st.expander("Show/hide details of step 1", expanded=True):
         st.markdown(
             """
-            ### **Blueprint Instructions**
+            ### **Instructions**
             Provide one or more reference examples that will guide the content generation.
             These examples serve as blueprints for the LLM to understand the format, style, and content type you want to generate.
             
