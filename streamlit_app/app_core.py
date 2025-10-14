@@ -4,7 +4,7 @@ This module imports and uses all the other modules to create the complete app.
 """
 
 import streamlit as st
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 from streamlit_app.data_upload import upload_dataset
@@ -57,7 +57,10 @@ class QualitativeAnalysisApp:
             "selected_model", None
         )
 
-        self.selected_fields: List[str] = st.session_state.get("selected_fields", [])
+        # Support both old format (List[str]) and new format (List[Dict[str, str]])
+        self.selected_fields: Union[List[str], List[Dict[str, str]]] = (
+            st.session_state.get("selected_fields", [])
+        )
         self.results: List[Dict[str, Any]] = st.session_state.get("results", [])
 
         # Label configuration
@@ -125,7 +128,7 @@ class QualitativeAnalysisApp:
         """
         Run the annotation workflow for analyzing existing datasets.
         """
-        st.markdown("## 📊 Annotation Mode", unsafe_allow_html=True)
+        st.markdown("## Annotation Mode", unsafe_allow_html=True)
         st.markdown(
             """
             **Annotation Mode** allows you to analyze existing datasets using LLMs and compare results with human annotations.
@@ -162,7 +165,7 @@ class QualitativeAnalysisApp:
         """
         Run the generation workflow for creating and annotating new content.
         """
-        st.markdown("## 🚀 Generation Mode", unsafe_allow_html=True)
+        st.markdown("## Generation Mode", unsafe_allow_html=True)
         st.markdown(
             """
             **Generation Mode** allows you to generate new content using LLMs based on blueprint examples, then annotate the generated content.

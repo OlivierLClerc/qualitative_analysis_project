@@ -52,6 +52,7 @@ def construct_prompt(
     examples: str,
     instructions: str,
     selected_fields: Optional[List[str]] = None,
+    field_descriptions: Optional[Dict[str, str]] = None,
     output_format_example: Optional[Dict[str, Any]] = None,
     output_format_instructions: Optional[str] = None,
     json_output: bool = True,
@@ -83,6 +84,9 @@ def construct_prompt(
     selected_fields : Optional[List[str]], optional
         Fields that must appear in the model's output. Default is `None`.
 
+    field_descriptions : Optional[Dict[str, str]], optional
+        Dictionary mapping field names to their descriptions. Default is `None`.
+
     output_format_example : Optional[Dict[str, Any]], optional
         Example of the expected output structure in dictionary format. Default is `None`.
 
@@ -101,6 +105,19 @@ def construct_prompt(
     # Default to an empty list if no fields are provided
     if selected_fields is None:
         selected_fields = []
+
+    if field_descriptions is None:
+        field_descriptions = {}
+
+    # Build output format example using field descriptions (like generation mode)
+    if output_format_example is None and selected_fields:
+        output_format_example = {}
+        for field in selected_fields:
+            desc = field_descriptions.get(field, "")
+            # Use the description as the example value if provided
+            output_format_example[field] = (
+                desc if desc else f"Your {field.lower()} here"
+            )
 
     # Generate default JSON output instructions if none are provided
     if json_output:

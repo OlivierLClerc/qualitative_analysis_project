@@ -82,7 +82,7 @@ def load_previous_session(app_instance: Any) -> None:
             app_instance.generation_config = generation_config
             app_instance.annotation_config = annotation_config
 
-            # Update session_state
+            # Update session_state (standard mode data)
             st.session_state["selected_columns"] = app_instance.selected_columns
             st.session_state["column_renames"] = app_instance.column_renames
             st.session_state["column_descriptions"] = app_instance.column_descriptions
@@ -94,6 +94,14 @@ def load_previous_session(app_instance: Any) -> None:
             st.session_state["label_column"] = label_column
             st.session_state["label_type"] = label_type
             st.session_state["text_columns"] = text_columns
+
+            # Load gameplay mode data if present (for backward compatibility)
+            use_gameplay_mode = session_data.get("use_gameplay_mode", False)
+            selected_gameplay = session_data.get("selected_gameplay", None)
+
+            st.session_state["use_gameplay_mode"] = use_gameplay_mode
+            if selected_gameplay:
+                st.session_state["selected_gameplay"] = selected_gameplay
 
             # Update generation mode session state
             st.session_state["selected_mode"] = selected_mode
@@ -188,6 +196,9 @@ def save_session(app_instance: Any) -> None:
         "label_column": app_instance.label_column,
         "label_type": app_instance.label_type,
         "text_columns": app_instance.text_columns,
+        # Gameplay mode data (if applicable)
+        "use_gameplay_mode": st.session_state.get("use_gameplay_mode", False),
+        "selected_gameplay": st.session_state.get("selected_gameplay", None),
         # Generation mode data
         "selected_mode": st.session_state.get("selected_mode", "Annotation Mode"),
         "blueprints": getattr(app_instance, "blueprints", []),

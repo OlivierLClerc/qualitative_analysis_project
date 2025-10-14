@@ -25,6 +25,60 @@ def configure_generation(app_instance: Any) -> Optional[Dict[str, Any]]:
             st.warning("Please provide blueprint examples in Step 1 first.")
             return None
 
+        # Check for gameplay mode and pre-populate
+        use_gameplay = st.session_state.get("generation_use_gameplay", False)
+        gameplay_data = st.session_state.get("generation_gameplay_data", None)
+
+        if use_gameplay and gameplay_data:
+            selected_gameplay = st.session_state.get(
+                "generation_selected_gameplay", "Unknown"
+            )
+            st.info(
+                f"**Gameplay Mode Active** - Values pre-populated from template for gameplay: {selected_gameplay}"
+            )
+            st.markdown("*You can review and modify all pre-filled values below.*")
+
+            # Pre-populate generation prompt
+            if (
+                "generation_prompt" not in st.session_state
+                or not st.session_state["generation_prompt"]
+            ):
+                generation_prompt_from_config = gameplay_data.get(
+                    "generation_prompt",
+                    gameplay_data.get("generation", {}).get("prompt", ""),
+                )
+                if generation_prompt_from_config:
+                    st.session_state["generation_prompt"] = (
+                        generation_prompt_from_config
+                    )
+
+            # Pre-populate output columns
+            output_columns_from_config = gameplay_data.get(
+                "output_columns",
+                gameplay_data.get("generation", {}).get("output_columns", []),
+            )
+            if output_columns_from_config and (
+                "num_generation_columns" not in st.session_state
+                or not st.session_state.get("num_generation_columns")
+            ):
+                st.session_state["num_generation_columns"] = len(
+                    output_columns_from_config
+                )
+
+                # Pre-populate column names and descriptions
+                for i, col_config in enumerate(output_columns_from_config):
+                    if isinstance(col_config, dict):
+                        st.session_state[f"gen_col_name_{i}"] = col_config.get(
+                            "name", f"Column_{i+1}"
+                        )
+                        st.session_state[f"gen_col_desc_{i}"] = col_config.get(
+                            "description", ""
+                        )
+                    elif isinstance(col_config, str):
+                        # If just column names without descriptions
+                        st.session_state[f"gen_col_name_{i}"] = col_config
+                        st.session_state[f"gen_col_desc_{i}"] = ""
+
         st.markdown(
             """
             ### **Generation Setup**
@@ -51,16 +105,6 @@ def configure_generation(app_instance: Any) -> Optional[Dict[str, Any]]:
         if not generation_prompt.strip():
             st.info("Please provide a generation prompt to proceed.")
             return None
-
-        # Number of items to generate
-        num_items = st.number_input(
-            "**Number of items to generate:**",
-            min_value=1,
-            max_value=100,
-            value=st.session_state.get("num_items_to_generate", 5),
-            step=1,
-            key="num_items_input",
-        )
 
         st.markdown("### **Output Columns Configuration**")
         st.markdown(
@@ -149,7 +193,6 @@ def configure_generation(app_instance: Any) -> Optional[Dict[str, Any]]:
         # Build configuration dictionary
         config = {
             "generation_prompt": generation_prompt,
-            "num_items": num_items,
             "columns": generation_columns,
             "column_descriptions": column_descriptions,
             "temperature": temperature,
@@ -160,15 +203,12 @@ def configure_generation(app_instance: Any) -> Optional[Dict[str, Any]]:
         app_instance.generation_config = config
         st.session_state["generation_config"] = config
         st.session_state["generation_prompt"] = generation_prompt
-        st.session_state["num_items_to_generate"] = num_items
         st.session_state["generation_temperature"] = temperature
         st.session_state["generation_max_tokens"] = max_tokens
 
         # Show configuration summary
         st.markdown("### **Configuration Summary**")
-        st.info(
-            f"📝 Will generate **{num_items} items** with **{len(generation_columns)} columns**"
-        )
+        st.info(f"📝 Configuration ready with **{len(generation_columns)} columns**")
 
         # Use checkbox instead of nested expander
         show_setup = st.checkbox(

@@ -65,6 +65,21 @@ def _process_data_with_llm(
         )
         st.session_state["data_format_description"] = data_format_description
 
+    # Extract field names and descriptions from selected_fields (handles both old list format and new dict format)
+    if app_instance.selected_fields:
+        if isinstance(app_instance.selected_fields[0], dict):
+            field_names = [field["name"] for field in app_instance.selected_fields]
+            field_descriptions = {
+                field["name"]: field["description"]
+                for field in app_instance.selected_fields
+            }
+        else:
+            field_names = app_instance.selected_fields
+            field_descriptions = {}
+    else:
+        field_names = []
+        field_descriptions = {}
+
     for i, (idx, row) in enumerate(data_to_process.iterrows()):
         try:
             # Build the text from the selected (renamed) columns in the original order
@@ -89,10 +104,8 @@ def _process_data_with_llm(
                 codebook=app_instance.codebook,
                 examples=app_instance.examples,
                 instructions="You are an assistant that evaluates data entries.",
-                selected_fields=app_instance.selected_fields,
-                output_format_example={
-                    field: "Your text here" for field in app_instance.selected_fields
-                },
+                selected_fields=field_names,
+                field_descriptions=field_descriptions,
             )
 
             if debug_mode:
@@ -109,7 +122,7 @@ def _process_data_with_llm(
             )
 
             # Parse the LLM response into a dictionary
-            parsed = parse_llm_response(response, app_instance.selected_fields)
+            parsed = parse_llm_response(response, field_names)
 
             # ------------------------------------------------------------------
             # Optional: partial numeric extraction from label column
@@ -547,6 +560,23 @@ def run_analysis(
                 if entry_text_str.endswith("\n"):
                     entry_text_str = entry_text_str[:-1]
 
+                # Extract field names and descriptions
+                if app_instance.selected_fields:
+                    if isinstance(app_instance.selected_fields[0], dict):
+                        field_names_for_prompt = [
+                            field["name"] for field in app_instance.selected_fields
+                        ]
+                        field_descriptions_for_prompt = {
+                            field["name"]: field["description"]
+                            for field in app_instance.selected_fields
+                        }
+                    else:
+                        field_names_for_prompt = app_instance.selected_fields
+                        field_descriptions_for_prompt = {}
+                else:
+                    field_names_for_prompt = []
+                    field_descriptions_for_prompt = {}
+
                 # Construct the prompt
                 prompt = construct_prompt(
                     data_format_description=data_format_description,
@@ -554,10 +584,8 @@ def run_analysis(
                     codebook=app_instance.codebook,
                     examples=app_instance.examples,
                     instructions="You are an assistant that evaluates data entries.",
-                    selected_fields=app_instance.selected_fields,
-                    output_format_example={
-                        field: "Sample text" for field in app_instance.selected_fields
-                    },
+                    selected_fields=field_names_for_prompt,
+                    field_descriptions=field_descriptions_for_prompt,
                 )
 
                 try:
@@ -788,6 +816,23 @@ def run_analysis(
                 if entry_text_str.endswith("\n"):
                     entry_text_str = entry_text_str[:-1]
 
+                # Extract field names and descriptions
+                if app_instance.selected_fields:
+                    if isinstance(app_instance.selected_fields[0], dict):
+                        field_names_for_cost = [
+                            field["name"] for field in app_instance.selected_fields
+                        ]
+                        field_descriptions_for_cost = {
+                            field["name"]: field["description"]
+                            for field in app_instance.selected_fields
+                        }
+                    else:
+                        field_names_for_cost = app_instance.selected_fields
+                        field_descriptions_for_cost = {}
+                else:
+                    field_names_for_cost = []
+                    field_descriptions_for_cost = {}
+
                 # Construct the prompt
                 prompt = construct_prompt(
                     data_format_description=data_format_description,
@@ -795,10 +840,8 @@ def run_analysis(
                     codebook=app_instance.codebook,
                     examples=app_instance.examples,
                     instructions="You are an assistant that evaluates data entries.",
-                    selected_fields=app_instance.selected_fields,
-                    output_format_example={
-                        field: "Sample text" for field in app_instance.selected_fields
-                    },
+                    selected_fields=field_names_for_cost,
+                    field_descriptions=field_descriptions_for_cost,
                 )
 
                 try:

@@ -3,7 +3,14 @@ Module for handling blueprint/reference input functionality in the generation wo
 """
 
 import streamlit as st
+import json
 from typing import Any, Optional, Dict
+
+from streamlit_app.gameplay_utils import (
+    is_gameplay_config,
+    get_available_gameplays,
+    get_gameplay_description,
+)
 
 
 def blueprint_input(app_instance: Any) -> Optional[Dict[str, str]]:
@@ -19,6 +26,124 @@ def blueprint_input(app_instance: Any) -> Optional[Dict[str, str]]:
     """
     st.markdown("### Step 1: Blueprint/Reference Input", unsafe_allow_html=True)
     with st.expander("Show/hide details of step 1", expanded=True):
+        # Check for gameplay mode first
+        st.markdown("---")
+        st.markdown("### Gameplay Mode (Optional)")
+        use_gameplay = st.checkbox(
+            "Use gameplay template configuration?",
+            value=st.session_state.get("generation_use_gameplay", False),
+            key="generation_gameplay_checkbox",
+            help="Load blueprint and settings from a gameplay configuration template",
+        )
+
+        st.session_state["generation_use_gameplay"] = use_gameplay
+
+        if use_gameplay:
+            st.markdown(
+                """
+            Upload a **gameplay configuration JSON** that contains generation templates 
+            and settings for different exercise types.
+            """
+            )
+
+            gameplay_config_file = st.file_uploader(
+                "Upload Gameplay Config (JSON)",
+                type=["json"],
+                key="generation_gameplay_config_uploader",
+            )
+
+            if gameplay_config_file is not None:
+                try:
+                    gameplay_config = json.load(gameplay_config_file)
+
+                    # Validate it's a gameplay config
+                    if not is_gameplay_config(gameplay_config):
+                        st.error(
+                            "❌ This JSON doesn't contain a 'gameplays' section. Please use a gameplay configuration file."
+                        )
+                        return None
+
+                    # Store in session
+                    st.session_state["generation_gameplay_config"] = gameplay_config
+
+                    # Get available gameplays
+                    available_gameplays = get_available_gameplays(gameplay_config)
+
+                    st.success(
+                        f"✅ Gameplay config loaded! Available gameplays: {', '.join(available_gameplays)}"
+                    )
+
+                    # Let user select gameplay
+                    st.markdown("### Select Gameplay Type")
+
+                    # Get previously selected gameplay if any
+                    default_index = 0
+                    if (
+                        "generation_selected_gameplay" in st.session_state
+                        and st.session_state["generation_selected_gameplay"]
+                        in available_gameplays
+                    ):
+                        default_index = available_gameplays.index(
+                            st.session_state["generation_selected_gameplay"]
+                        )
+
+                    selected_gameplay = st.selectbox(
+                        "Choose which gameplay type to generate:",
+                        options=available_gameplays,
+                        index=default_index,
+                        key="generation_gameplay_selector",
+                    )
+
+                    # Show gameplay description
+                    gameplay_desc = get_gameplay_description(
+                        gameplay_config, selected_gameplay
+                    )
+                    if gameplay_desc:
+                        st.info(f"ℹ️ **{selected_gameplay}**: {gameplay_desc}")
+
+                    # Get blueprint from gameplay config
+                    gameplay_data = gameplay_config["gameplays"].get(
+                        selected_gameplay, {}
+                    )
+                    blueprint_from_config = gameplay_data.get(
+                        "blueprint_example", gameplay_data.get("blueprint_ref", "")
+                    )
+
+                    if blueprint_from_config:
+                        st.success("✅ Blueprint loaded from gameplay template")
+
+                        # Store everything
+                        st.session_state["generation_selected_gameplay"] = (
+                            selected_gameplay
+                        )
+                        st.session_state["generation_gameplay_data"] = gameplay_data
+
+                        # Pre-populate blueprint
+                        blueprints_dict = {"Blueprint_1": blueprint_from_config}
+                        app_instance.blueprints = blueprints_dict
+                        st.session_state["blueprints"] = blueprints_dict
+                        st.session_state["blueprint_0"] = blueprint_from_config
+                        st.session_state["num_blueprints"] = 1
+
+                    else:
+                        st.warning(
+                            "⚠️ No blueprint found in the selected gameplay config. Please enter one manually below."
+                        )
+
+                except json.JSONDecodeError:
+                    st.error("❌ Invalid JSON file. Please check the file format.")
+                    return None
+                except Exception as e:
+                    st.error(f"❌ Error loading gameplay config: {e}")
+                    return None
+            else:
+                st.info(
+                    "Upload a gameplay configuration JSON to continue with gameplay mode"
+                )
+                st.markdown("---")
+
+        # Normal blueprint input section
+        st.markdown("---")
         st.markdown(
             """
             ### **Instructions**

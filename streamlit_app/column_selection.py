@@ -33,6 +33,75 @@ def select_rename_describe_columns(
             st.error("No dataset loaded.")
             return None
 
+        # Check if we're in gameplay mode with a loaded config for pre-population
+        use_gameplay = st.session_state.get("use_gameplay_mode", False)
+        merged_config = st.session_state.get("gameplay_merged_config", None)
+
+        # Pre-populate defaults from gameplay config if available
+        if use_gameplay and merged_config:
+            st.info(
+                f"**Gameplay Mode Active** - Values pre-populated from template for gameplay: {st.session_state.get('selected_gameplay', 'Unknown')}"
+            )
+            st.markdown(
+                "*You can review and modify all pre-filled values below before processing.*"
+            )
+
+            # Pre-populate session state with gameplay config (if not already set)
+            if (
+                "annotation_columns" not in st.session_state
+                or not st.session_state["annotation_columns"]
+            ):
+                st.session_state["annotation_columns"] = merged_config.get(
+                    "annotation_columns", []
+                )
+            if (
+                "label_type" not in st.session_state
+                or not st.session_state["label_type"]
+            ):
+                st.session_state["label_type"] = merged_config.get(
+                    "label_type", "Integer"
+                )
+            if (
+                "selected_columns" not in st.session_state
+                or not st.session_state["selected_columns"]
+            ):
+                st.session_state["selected_columns"] = list(
+                    merged_config["column_descriptions"].keys()
+                )
+            if (
+                "text_columns" not in st.session_state
+                or not st.session_state["text_columns"]
+            ):
+                st.session_state["text_columns"] = merged_config.get("text_columns", [])
+            if (
+                "column_descriptions" not in st.session_state
+                or not st.session_state["column_descriptions"]
+            ):
+                st.session_state["column_descriptions"] = merged_config[
+                    "column_descriptions"
+                ]
+            if (
+                "column_renames" not in st.session_state
+                or not st.session_state["column_renames"]
+            ):
+                # Default to identity mapping (column name = renamed name)
+                st.session_state["column_renames"] = {
+                    col: col for col in merged_config["column_descriptions"].keys()
+                }
+
+            # Store other config for later steps (always update these)
+            st.session_state["codebook"] = merged_config["codebook"]
+            st.session_state["examples"] = merged_config.get("examples", "")
+            st.session_state["selected_fields"] = merged_config["selected_fields"]
+            st.session_state["label_column"] = merged_config.get("label_column")
+
+            # Update app instance with pre-populated values
+            app_instance.column_descriptions = st.session_state["column_descriptions"]
+            app_instance.column_renames = st.session_state["column_renames"]
+            app_instance.text_columns = st.session_state["text_columns"]
+            app_instance.label_type = st.session_state["label_type"]
+
+        # NORMAL WORKFLOW (works for both standard and gameplay mode)
         columns = data.columns.tolist()
 
         # 2.1: Let user pick the annotation columns

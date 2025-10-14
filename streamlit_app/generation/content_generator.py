@@ -89,6 +89,22 @@ def run_generation(app_instance: Any) -> Optional[pd.DataFrame]:
         config = app_instance.generation_config
         columns = list(config["columns"].keys())
 
+        # Number of items to generate
+        st.subheader("Generation Settings")
+        num_items = st.number_input(
+            "**Number of items to generate:**",
+            min_value=1,
+            max_value=100,
+            value=st.session_state.get("num_items_to_generate", 5),
+            step=1,
+            key="num_items_input",
+            help="Each item requires a separate API call to the LLM",
+        )
+        st.session_state["num_items_to_generate"] = num_items
+
+        # Update the config with the number of items
+        config["num_items"] = num_items
+
         # Cost estimation
         st.subheader("Cost Estimation")
         st.markdown(
