@@ -184,17 +184,6 @@ def compare_with_external_judgments(app_instance: Any) -> None:
                         columns={llm_judgment_col: "ModelPrediction"}
                     )
 
-                # Convert to integers if possible
-                try:
-                    for col in ["ModelPrediction"] + app_instance.annotation_columns:
-                        if col in analysis_data.columns:
-                            analysis_data[col] = analysis_data[col].astype(int)
-                except ValueError:
-                    st.error(
-                        "Could not convert columns to integer for agreement analysis."
-                    )
-                    return
-
                 # Drop rows with missing values in essential columns
                 essential_cols = ["ModelPrediction"] + app_instance.annotation_columns
                 analysis_data = analysis_data.dropna(subset=essential_cols)
@@ -491,17 +480,6 @@ def compare_with_external_judgments(app_instance: Any) -> None:
                     analysis_data = analysis_data.rename(
                         columns={metrics_llm_judgment_col: "ModelPrediction"}
                     )
-
-                # Convert to integers if possible
-                try:
-                    for col in ["ModelPrediction"] + app_instance.annotation_columns:
-                        if col in analysis_data.columns:
-                            analysis_data[col] = analysis_data[col].astype(int)
-                except ValueError:
-                    st.error(
-                        "Could not convert columns to integer for classification metrics."
-                    )
-                    return
 
                 # Drop rows with missing values in essential columns
                 essential_cols = ["ModelPrediction"] + app_instance.annotation_columns
@@ -978,28 +956,52 @@ def compare_with_external_judgments(app_instance: Any) -> None:
                             columns={kripp_model_col: "ModelPrediction"}
                         )
 
-                    # Convert to integers if possible
-                    try:
-                        for col in [
-                            "ModelPrediction"
-                        ] + app_instance.annotation_columns:
-                            if col in analysis_data.columns:
-                                analysis_data[col] = analysis_data[col].astype(int)
-                    except ValueError:
-                        st.error(
-                            "Could not convert columns to integer for Krippendorff's alpha test."
-                        )
-                        return
+                    # --- Prepare data for Krippendorff's alpha test ---
+                    analysis_data = results_df.copy()
 
-                    # Drop rows with missing values in essential columns
+                    # Add required columns if they don't exist
+                    for col, default_value in {
+                        "prompt_name": "streamlit_analysis",
+                        "iteration": 1,
+                        "split": "train",
+                        "run": 1,
+                    }.items():
+                        if col not in analysis_data.columns:
+                            analysis_data[col] = default_value
+
+                    # Rename the selected LLM column to ModelPrediction for consistency
+                    if kripp_model_col != "ModelPrediction":
+                        analysis_data = analysis_data.rename(
+                            columns={kripp_model_col: "ModelPrediction"}
+                        )
+
+                    # 🧹 Clean and convert columns safely
                     essential_cols = [
                         "ModelPrediction"
                     ] + app_instance.annotation_columns
-                    analysis_data = analysis_data.dropna(subset=essential_cols)
+
+                    for col in essential_cols:
+                        if col in analysis_data.columns:
+                            # Replace blanks and pseudo-NaNs
+                            analysis_data[col] = (
+                                analysis_data[col]
+                                .replace(["", " ", "None", "nan", "NaN"], np.nan)
+                                .astype(float)
+                            )
+                            # Warn if the column is fully empty
+                            if analysis_data[col].isna().all():
+                                st.warning(
+                                    f"Column '{col}' has no valid numeric entries and will be ignored."
+                                )
+
+                    # Drop only rows where *all* essential columns are NaN
+                    analysis_data = analysis_data.dropna(
+                        how="all", subset=essential_cols
+                    )
 
                     if analysis_data.empty:
                         st.error(
-                            "No valid (non-NA) rows found after filtering for these columns."
+                            "No valid rows found after filtering for essential columns."
                         )
                         return
 

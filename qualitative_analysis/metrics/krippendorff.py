@@ -87,10 +87,52 @@ def compute_krippendorff_non_inferiority(
 
     # Helper function to compute alpha for a subset of columns
     def alpha_cols(frame, cols, row_idx=None):
-        """Compute Krippendorff's alpha for specified columns and rows."""
+        """
+        Compute Krippendorff's alpha for specified columns and rows,
+        keeping missing values (NaNs) so that partial annotations are allowed.
+
+        Krippendorff's alpha naturally handles missing data, as long as
+        at least two annotators share at least one commonly annotated item.
+        """
         sub = frame.iloc[row_idx] if row_idx is not None else frame
-        data = sub[cols].dropna().T.to_numpy(dtype=float)
-        return krippendorff.alpha(data, level_of_measurement=level_of_measurement)
+        data = sub[cols].to_numpy(dtype=float).T  # keep NaNs for krippendorff.alpha
+
+        # Detect annotators with no data at all
+        annotator_mask = ~np.all(np.isnan(data), axis=1)
+        if not np.all(annotator_mask):
+            empty_annotators = [
+                cols[i] for i, ok in enumerate(annotator_mask) if not ok
+            ]
+            if verbose:
+                print(
+                    f"⚠️ Warning: {empty_annotators} have no annotations and were excluded."
+                )
+            data = data[annotator_mask, :]
+
+        # Check for minimum conditions: at least 2 valid annotators and 2 annotated items
+        if data.shape[0] < 2:
+            if verbose:
+                print(
+                    "⚠️ Skipping α computation: fewer than 2 annotators with valid data."
+                )
+            return np.nan
+
+        valid_items_mask = ~np.all(np.isnan(data), axis=0)
+        data = data[:, valid_items_mask]
+
+        if data.shape[1] < 2:
+            if verbose:
+                print(
+                    "⚠️ Skipping α computation: fewer than 2 items with overlapping annotations."
+                )
+            return np.nan
+
+        try:
+            return krippendorff.alpha(data, level_of_measurement=level_of_measurement)
+        except Exception as e:
+            if verbose:
+                print(f"⚠️ Error computing α for {cols}: {e}")
+            return np.nan
 
     for (prompt_name, iteration), scenario_group in scenario_grouped:
         scenario_key = f"{prompt_name}_iteration_{iteration}"

@@ -35,7 +35,7 @@ def select_rename_describe_columns(
 
         columns = data.columns.tolist()
 
-        # 2.1: Let user pick the annotation columns
+        # --- 2.1: Let user pick the annotation columns
         st.markdown(
             """
             Select column(s) that contain *human annotations*.
@@ -52,39 +52,43 @@ def select_rename_describe_columns(
             key="annotation_columns_selection",
         )
 
-        # Filter to keep only rows that have non-NA in these annotation columns
+        # Pre-init session state BEFORE creating the checkbox
+        if "allow_missing_annotations" not in st.session_state:
+            st.session_state["allow_missing_annotations"] = False
+
+        allow_missing = st.checkbox(
+            "Allow missing annotations (keep rows annotated by at least one selected annotator)",
+            key="allow_missing_annotations",
+        )
+
         if app_instance.annotation_columns:
-            # Store the original unfiltered data
             app_instance.original_data = data.copy()
             st.session_state["original_data"] = app_instance.original_data
-
-            # Count rows before filtering
             total_rows = len(data)
 
-            # Filter data to keep only rows with annotations
-            filtered_data = data.dropna(subset=app_instance.annotation_columns)
+            if allow_missing:
+                # at least one non-NA among selected columns
+                filtered_data = data.dropna(
+                    how="all", subset=app_instance.annotation_columns
+                )
+                st.write(
+                    f"**Filtered** dataset to keep rows with at least one annotation in {app_instance.annotation_columns}."
+                )
+            else:
+                # non-NA in all selected columns
+                filtered_data = data.dropna(subset=app_instance.annotation_columns)
+                st.write(
+                    f"**Filtered** dataset to keep only rows with annotations in all of {app_instance.annotation_columns}."
+                )
 
-            # Count rows after filtering
             filtered_rows = len(filtered_data)
-            filtered_out_rows = total_rows - filtered_rows
-
             st.write(
-                f"**Filtered** dataset to remove rows without annotations in {app_instance.annotation_columns}."
+                f"Filtered dataset: {filtered_rows} rows kept, {total_rows - filtered_rows} rows filtered out."
             )
-            st.write(
-                f"Filtered dataset: {filtered_rows} rows kept (with annotations), {filtered_out_rows} rows filtered out (without annotations)."
-            )
-
-            # Update the data variable to use the filtered data
             data = filtered_data
 
             # If annotation columns are selected, ask for the expected data type
-            st.markdown(
-                """
-                ### **Label Type Configuration**
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown("### **Label Type Configuration**", unsafe_allow_html=True)
             st.markdown(
                 """
                 Select the expected data type for your labels (both human annotations and LLM predictions).
@@ -113,7 +117,7 @@ def select_rename_describe_columns(
             st.session_state["label_type"] = label_type
             app_instance.label_type = label_type
 
-        # Store final annotation columns in session
+        # Store final annotation columns and the toggle in session
         st.session_state["annotation_columns"] = app_instance.annotation_columns
 
         # 2.2: Select the columns that will be analyzed (exclude annotation columns)
