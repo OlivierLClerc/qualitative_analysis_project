@@ -38,32 +38,56 @@ def configure_generation(app_instance: Any) -> Optional[Dict[str, Any]]:
             )
             st.markdown("*You can review and modify all pre-filled values below.*")
 
-            # Pre-populate generation prompt
-            if (
-                "generation_prompt" not in st.session_state
-                or not st.session_state["generation_prompt"]
-            ):
-                generation_prompt_from_config = gameplay_data.get(
-                    "generation_prompt",
-                    gameplay_data.get("generation", {}).get("prompt", ""),
-                )
-                if generation_prompt_from_config:
-                    st.session_state["generation_prompt"] = (
-                        generation_prompt_from_config
-                    )
+            # Always pre-populate generation prompt from gameplay config
+            generation_prompt_from_config = gameplay_data.get(
+                "generation_prompt",
+                gameplay_data.get("generation", {}).get("prompt", ""),
+            )
+            if generation_prompt_from_config:
+                st.session_state["generation_prompt"] = generation_prompt_from_config
 
-            # Pre-populate output columns
+            # Pre-populate output columns (with automatic derivation from columns if needed)
             output_columns_from_config = gameplay_data.get(
                 "output_columns",
                 gameplay_data.get("generation", {}).get("output_columns", []),
             )
-            if output_columns_from_config and (
-                "num_generation_columns" not in st.session_state
-                or not st.session_state.get("num_generation_columns")
-            ):
+
+            # If no output_columns found, automatically derive from columns
+            if not output_columns_from_config and "columns" in gameplay_data:
+                st.info(
+                    "🔄 **Auto-deriving output columns from 'columns' field** (no redundancy needed!)"
+                )
+                output_columns_from_config = []
+
+                # Always add instruction column first from common_columns_to_all_gp
+                gameplay_config = st.session_state.get("generation_gameplay_config", {})
+                common_columns = gameplay_config.get("common_columns_to_all_gp", {})
+                if "instruction" in common_columns:
+                    output_columns_from_config.append(
+                        {
+                            "name": "instruction",
+                            "description": common_columns["instruction"],
+                        }
+                    )
+
+                # Then add gameplay-specific columns
+                for name, desc in gameplay_data["columns"].items():
+                    output_columns_from_config.append(
+                        {"name": name, "description": desc}
+                    )
+
+            if output_columns_from_config:
+                # Always force update from gameplay config
                 st.session_state["num_generation_columns"] = len(
                     output_columns_from_config
                 )
+
+                # Clear any existing column data first
+                for i in range(20):  # Clear up to max columns
+                    if f"gen_col_name_{i}" in st.session_state:
+                        del st.session_state[f"gen_col_name_{i}"]
+                    if f"gen_col_desc_{i}" in st.session_state:
+                        del st.session_state[f"gen_col_desc_{i}"]
 
                 # Pre-populate column names and descriptions
                 for i, col_config in enumerate(output_columns_from_config):
