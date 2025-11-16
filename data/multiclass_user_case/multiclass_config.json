@@ -32,7 +32,7 @@
     "codebook": "Pour chaque entr\u00e9e, \u00e9valuer si la r\u00e9ponse est fausse, partiellement correcte ou correcte, en utilisant l\u2019\u00e9chelle fournie (annotation).\nLa r\u00e9ponse est \u00e9crite par des enfants, l'orthographe et la grammaire ne sont pas importantes.\nLa r\u00e9ponse n'a pas besoin d'\u00eatre parfaitement similaire \u00e0 l'exemple juste pour \u00eatre consid\u00e9r\u00e9e comme un 2. Si la r\u00e9ponse est correcte dans l'esprit, elle peut \u00eatre consid\u00e9r\u00e9e comme un 2 plut\u00f4t que comme un 1.\nR\u00e9pondre en donnant le Raisonnement et la Classification (0, 1 ou 2) de la r\u00e9ponse.",
     "examples": "",
     "selected_fields": [
-        "Reasoning",
+        "Raisonnement",
         "Classification"
     ],
     "selected_model": null,
