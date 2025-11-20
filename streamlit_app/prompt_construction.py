@@ -102,38 +102,49 @@ def construct_prompt(
     if selected_fields is None:
         selected_fields = []
 
-    # Generate default JSON output instructions if none are provided
-    if json_output:
-        if output_format_instructions is None:
-            output_format_instructions = f"""
-- Your response should include the following fields: {', '.join(selected_fields)}.
-- **Your response must be in JSON format only. Do not include any explanations, greetings, or additional text.**
+#     # Generate default JSON output instructions if none are provided
+#     if json_output:
+#         if output_format_instructions is None:
+#             output_format_instructions = f"""
+# - Your response should include the following fields: {', '.join(selected_fields)}.
+# - **Your response must be in JSON format only. Do not include any explanations, greetings, or additional text.**
 
-**Example response format:**
+# **Example response format:**
 
-{json.dumps(output_format_example, ensure_ascii=False, indent=2)}
-"""
+# {json.dumps(output_format_example, ensure_ascii=False, indent=2)}
+# """
+#     # Assemble the prompt
+#     prompt = f"""
+# {instructions}
 
+# You are provided with data entries in the following format:
+
+# {data_format_description}
+
+# Here is an entry to evaluate:
+
+# {entry_text}
+
+# {codebook}
+
+# {examples}
+
+# **Instructions:**
+
+# - Evaluate the entry according to the codebook and examples.
+# - Provide your evaluation in the specified format.
+# {output_format_instructions}
+# """
     # Assemble the prompt
     prompt = f"""
-{instructions}
-
-You are provided with data entries in the following format:
-
-{data_format_description}
-
-Here is an entry to evaluate:
-
-{entry_text}
-
+**Codebook:**
 {codebook}
 
+**Examples:**
 {examples}
 
-**Instructions:**
+**Below is the entry to evaluate:**
 
-- Evaluate the entry according to the codebook and examples.
-- Provide your evaluation in the specified format.
-{output_format_instructions}
-"""
+{entry_text}
+    """
     return prompt

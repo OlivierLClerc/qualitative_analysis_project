@@ -89,98 +89,99 @@ def select_rename_describe_columns(
 
             # If annotation columns are selected, ask for the expected data type
             st.markdown("### **Label Type Configuration**", unsafe_allow_html=True)
-            st.markdown(
-                """
-                Select the expected data type for your labels (both human annotations and LLM predictions).
-                This helps ensure consistent data types for evaluation.
-                """
-            )
+            with st.container(border=True):
+                st.markdown(
+                    """
+                    Select the expected data type for your labels (both human annotations and LLM predictions).
+                    This helps ensure consistent data types for evaluation.
+                    """
+                )
 
-            # Determine the default index for the label type
-            label_type_options = ["Integer", "Float", "Text"]
-            default_index = 0
-            if app_instance.label_type:
-                try:
-                    default_index = label_type_options.index(app_instance.label_type)
-                except ValueError:
-                    default_index = 0
+                # Determine the default index for the label type
+                label_type_options = ["Integer", "Float", "Text"]
+                default_index = 0
+                if app_instance.label_type:
+                    try:
+                        default_index = label_type_options.index(app_instance.label_type)
+                    except ValueError:
+                        default_index = 0
 
-            # Select the expected data type for the labels
-            label_type = st.radio(
-                "Expected Label Type:",
-                options=label_type_options,
-                index=default_index,
-                key="label_type_radio",
-            )
+                # Select the expected data type for the labels
+                label_type = st.radio(
+                    "Expected Label Type:",
+                    options=label_type_options,
+                    index=default_index,
+                    key="label_type_radio",
+                )
 
-            # Store in session state and app instance
-            st.session_state["label_type"] = label_type
-            app_instance.label_type = label_type
+                # Store in session state and app instance
+                st.session_state["label_type"] = label_type
+                app_instance.label_type = label_type
 
-        # Store final annotation columns and the toggle in session
-        st.session_state["annotation_columns"] = app_instance.annotation_columns
+            # Store final annotation columns and the toggle in session
+            st.session_state["annotation_columns"] = app_instance.annotation_columns
 
         # 2.2: Select the columns that will be analyzed (exclude annotation columns)
         columns_for_analysis = [
             c for c in data.columns if c not in app_instance.annotation_columns
         ]
-
-        st.markdown(
-            """
-            Now, select the *analysis columns* (the columns you want the LLM to process).
-            You should generally *exclude* your annotation columns here.
-            """,
-            unsafe_allow_html=True,
-        )
-
-        previous_selection = st.session_state.get("selected_columns", [])
-        # Filter out invalid columns
-        valid_previous_selection = [
-            col for col in previous_selection if col in columns_for_analysis
-        ]
-
-        app_instance.selected_columns = st.multiselect(
-            "Columns to analyze:",
-            options=columns_for_analysis,
-            default=(
-                valid_previous_selection
-                if valid_previous_selection
-                else columns_for_analysis
-            ),
-        )
-        st.session_state["selected_columns"] = app_instance.selected_columns
-
-        if not app_instance.selected_columns:
-            st.info("Select at least one column to proceed.")
-            return None
-
-        # 2.3: Rename columns
-        # First, create a new column_renames dictionary that only includes selected columns
-        filtered_column_renames = {}
-        for col in app_instance.selected_columns:
-            default_rename = app_instance.column_renames.get(col, col)
-            new_name = st.text_input(
-                f"Rename '{col}' to:", value=default_rename, key=f"rename_{col}"
+        with st.container(border=True):
+            st.markdown(
+                """
+                Now, select the *analysis columns* (the columns you want the LLM to process).
+                You should generally *exclude* your annotation columns here.
+                """,
+                unsafe_allow_html=True,
             )
-            filtered_column_renames[col] = new_name
 
-        # Update app_instance.column_renames to only include selected columns
-        app_instance.column_renames = filtered_column_renames
-        st.session_state["column_renames"] = app_instance.column_renames
+            previous_selection = st.session_state.get("selected_columns", [])
+            # Filter out invalid columns
+            valid_previous_selection = [
+                col for col in previous_selection if col in columns_for_analysis
+            ]
 
-        # 2.4: Descriptions
-        st.write("Add a short description for each selected column:")
-        for col in app_instance.selected_columns:
-            renamed_col = app_instance.column_renames[col]
-            default_desc = app_instance.column_descriptions.get(renamed_col, "")
-            desc = st.text_area(
-                f"Description for '{renamed_col}':",
-                height=70,
-                value=default_desc,
-                key=f"desc_{renamed_col}",
+            app_instance.selected_columns = st.multiselect(
+                "Columns to analyze:",
+                options=columns_for_analysis,
+                default=(
+                    valid_previous_selection
+                    if valid_previous_selection
+                    else columns_for_analysis
+                ),
             )
-            app_instance.column_descriptions[renamed_col] = desc
-        st.session_state["column_descriptions"] = app_instance.column_descriptions
+            st.session_state["selected_columns"] = app_instance.selected_columns
+
+            if not app_instance.selected_columns:
+                st.info("Select at least one column to proceed.")
+                return None
+
+            # 2.3: Rename columns
+            # First, create a new column_renames dictionary that only includes selected columns
+            filtered_column_renames = {}
+            for col in app_instance.selected_columns:
+                default_rename = app_instance.column_renames.get(col, col)
+                new_name = st.text_input(
+                    f"Rename '{col}' to:", value=default_rename, key=f"rename_{col}"
+                )
+                filtered_column_renames[col] = new_name
+
+            # Update app_instance.column_renames to only include selected columns
+            app_instance.column_renames = filtered_column_renames
+            st.session_state["column_renames"] = app_instance.column_renames
+
+            # 2.4: Descriptions
+            st.write("Add a short description for each selected column:")
+            for col in app_instance.selected_columns:
+                renamed_col = app_instance.column_renames[col]
+                default_desc = app_instance.column_descriptions.get(renamed_col, "")
+                desc = st.text_area(
+                    f"Description for '{renamed_col}':",
+                    height=70,
+                    value=default_desc,
+                    key=f"desc_{renamed_col}",
+                )
+                app_instance.column_descriptions[renamed_col] = desc
+            st.session_state["column_descriptions"] = app_instance.column_descriptions
 
         # 2.5: Cleaning & Normalizing text columns
         st.markdown(

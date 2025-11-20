@@ -86,19 +86,17 @@ def parse_llm_response(
     Error parsing LLM response: No JSON object found in the LLM response.
     {'Evaluation': None, 'Comments': None}
     """
+    json_str = None
     try:
         # Step 1: Find JSON block (including markdown variants)
         json_match = re.search(
             r"(?:```(?:json)?\n)?({.*?})(?:\n```)?", evaluation_text, re.DOTALL
         )
 
-        if not json_match:
-            raise ValueError("No JSON found in response")
-
         # Step 2: Clean JSON string
         json_str = json_match.group(1)
 
-        # Remove comments and trailing commas
+        ## Remove comments and trailing commas
         json_str = re.sub(
             r"/\*.*?\*/|//.*?$|#.*?$|,\s*}(?=\s*$)",
             "",
@@ -124,7 +122,10 @@ def parse_llm_response(
 
     except Exception as e:
         print(f"Parsing Error: {str(e)}")
-        print(f"Cleaned JSON Attempt: {json_str}")
+        if json_str is not None:
+            print(f"Cleaned JSON Attempt: {json_str}")
+        else:
+            print(">> No JSON string could be extracted from the response. Increase max_tokens?")
         if not selected_fields:
             return {}  # Return empty dict if no selected_fields
         else:

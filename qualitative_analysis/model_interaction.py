@@ -41,7 +41,11 @@ from anthropic import Anthropic
 from together import Together
 from types import SimpleNamespace
 from typing import Optional, List, Dict, Any
-import google.generativeai as genai
+import time
+import google.api_core.exceptions as google_exceptions
+from google import genai
+from google.genai import types
+import re
 
 
 def is_gpt5_model(model_name: str) -> bool:
@@ -605,71 +609,169 @@ class GeminiLLMClient(LLMClient):
         """
         self.api_key = api_key
 
+    def normalize_key(self, field_name: str) -> str:
+        key = field_name.strip().lower()
+        key = re.sub(r"\W+", "_", key)  # any non-alphanumeric characters with _
+        key = key.strip("_")
+        return key
+
     def get_response(
-        self, prompt: str, model: str, **kwargs
+        self, prompt: str, model: str, app_instance, **kwargs
     ) -> tuple[str, SimpleNamespace]:
         """
-        Sends a prompt to the Google Gemini model and retrieves the response.
+        Send a text prompt to a specified Google Gemini model and retrieve the generated response.
 
-        Parameters:
+        Parameters
         ----------
-        - prompt (str):
-            The input text prompt to send to the language model.
-        - model (str):
-            The identifier of the Gemini model to use (e.g., "gemini-2.0-flash-001").
-        - **kwargs:
-            Additional keyword arguments for the Gemini API call, such as:
-                - temperature (float): Controls the randomness of the output (default is 0.0).
-                - max_tokens (int): The maximum number of tokens to generate (default is 500).
-                - verbose (bool): If True, prints the prompt and response for debugging (default is False).
+        prompt : str
+            The text prompt to be sent to the Gemini model.
+        model : str
+            The model identifier (e.g., "gemini-2.0-flash-001").
+        **kwargs :
+            Optional arguments for generation configuration:
+                - temperature (float, default = 0.0):
+                    Controls the randomness of the output.
+                - max_tokens (int, default = 500):
+                    Maximum number of tokens to generate.
+                - verbose (bool, default = False):
+                    If True, prints debug information (prompt and generated text).
+                - system_instruction (str or None, optional):
+                    Optional system-level instruction to control model behavior.
+                    If None or an empty string, no system instruction is sent.
+                - thinking_credits (int or None, optional):
+                    Optional reasoning / thinking budget passed to
+                    `ThinkingConfig(thinking_budget=...)`. If None, the underlying
+                    Gemini defaults are used.
 
-        Returns:
+        Returns
         -------
-        - tuple[str, SimpleNamespace]:
+        tuple[str, SimpleNamespace]
             A tuple containing:
-                - The model's generated response (str).
-                - A usage object with estimated token counts (SimpleNamespace).
+                - The generated response text (str).
+                - A SimpleNamespace object with estimated token usage:
+                    - prompt_tokens
+                    - completion_tokens
+                    - total_tokens
 
-        Raises:
-        ------
-        - Exception:
-            If the API request fails.
+        Error Handling
+        --------------
+        - Automatically retries up to 5 times on transient errors, such as
+          overload, quota issues, or temporary unavailability.
+        - Uses exponential backoff between retries (1.5s, 3s, 6s, 12s, ...).
+        - Re-raises the exception immediately if the error is not considered transient,
+          or after the final retry attempt fails.
         """
-        temperature = kwargs.get("temperature", 0.0)
-        max_tokens = kwargs.get("max_tokens", 500)
+        client = genai.Client()
         verbose = kwargs.get("verbose", False)
 
-        if verbose:
-            print(f"Prompt:\n{prompt}\n")
+        temperature = getattr(app_instance, "temperature", 0.0)
+        max_tokens = getattr(app_instance, "max_tokens", 500)
+        
+        selected_fields = getattr(app_instance, "selected_fields", [])
+        field_types = getattr(app_instance, "field_types", {})
+        field_enums = getattr(app_instance, "field_enums", {})
+        
+        system_instruction = getattr(app_instance, "gemini_system_instruction", None)
+        thinking_credits = getattr(app_instance, "gemini_thinking_credits", -1)
 
-        # Configure API key for this request to avoid global state conflicts
-        genai.configure(api_key=self.api_key)
+        # Json schema design
+        response_json_schema = {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+        for field in selected_fields:
+            field_type = field_types.get(field, "string")
+            enum_values = field_enums.get(field, []) or None
+            key = self.normalize_key(field)
 
-        # Create a GenerativeModel instance
-        gemini_model = genai.GenerativeModel(model)
+            prop = {}
+            prop["type"] = field_type
+            prop["nullable"] = True
 
-        # Generate content
-        response = gemini_model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-            ),
-        )
+            if enum_values:
+                prop["enum"] = enum_values
 
-        # Extract the content from the response
-        content_text = response.text.strip()
+            response_json_schema["properties"][key] = prop
+            response_json_schema["required"].append(key)
+
+
+        # Prompting with error handling: try at least 5 times with a delay in between
+        base_delay=0.5
+        max_retries=5
+        for attempt in range(1, max_retries+2):
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        thinking_config=types.ThinkingConfig(thinking_budget=thinking_credits),
+                        temperature=temperature,
+                        max_output_tokens=max_tokens,
+                        system_instruction=system_instruction,
+                        response_mime_type="application/json",
+                        response_json_schema=response_json_schema,
+                    ),
+                )
+                app_instance.selected_fields
+                print("**********************")
+                print("****** BEGINING ******")
+                print("**********************")
+                print("=== JSON SCHEMA ===")
+                print(response_json_schema)
+                print()
+                print(f"Thinking credit = {thinking_credits}")
+                print(f"max_tokens = {max_tokens}")
+                print("\n=== RAW RESPONSE ===")
+                print(response)
+                print("\n=== TEXT ===")
+                print(response.text)
+
+                # Tokens counting
+                output_token_count = response.usage_metadata.candidates_token_count or 0
+                thoughts_token_count=response.usage_metadata.thoughts_token_count or 0
+                completion_tokens=output_token_count+thoughts_token_count or 0
+                usage_obj = SimpleNamespace(
+                    prompt_tokens=response.usage_metadata.prompt_token_count,
+                    completion_tokens=completion_tokens,
+                    total_tokens=response.usage_metadata.total_token_count
+                )
+                print("\n=== USAGE OBJECT ===")
+                print(usage_obj)
+                print("**********************")
+                print("********* END ********")
+                print("**********************")
+                
+                break
+
+            except Exception as e :
+                msg = str(e).lower()
+                print(e)
+
+                # Retry only on specific transient errors inferred from the message
+                transient = (
+                    "overloaded" in msg
+                    or "resource exhausted" in msg
+                    or "quota" in msg
+                    or "429" in msg
+                    or "unavailable" in msg
+                    or "try again" in msg
+                )
+
+                # Non-transient error or last attempt: re-raise the exception
+                if not transient or attempt == max_retries:
+                    raise e
+
+                # Exponential backoff between retries
+                delay = base_delay * (2 ** (attempt - 1))
+                print(f"[Gemini] Transient error (attempt {attempt}/{max_retries}): {e}")
+                print(f"[Gemini] Retrying in {delay:.2f}s...")
+                time.sleep(delay)
+        
+        content_text=response.text or ""
 
         if verbose:
             print(f"Generation:\n{content_text}\n")
-
-        # Create a simple usage object (Gemini API doesn't provide token counts directly)
-        # This is a rough estimate for compatibility with other clients
-        usage_obj = SimpleNamespace(
-            prompt_tokens=len(prompt.split()),
-            completion_tokens=len(content_text.split()),
-            total_tokens=len(prompt.split()) + len(content_text.split()),
-        )
 
         return content_text, usage_obj
 
@@ -744,7 +846,7 @@ class OpenRouterLLMClient(LLMClient):
             If the API request fails (e.g., invalid model name, insufficient credits).
         """
         temperature = kwargs.get("temperature", 0.0)
-        max_tokens = kwargs.get("max_tokens", 500)
+        max_tokens = kwargs.get("max_tokens", 5000)
         verbose = kwargs.get("verbose", False)
 
         if verbose:
