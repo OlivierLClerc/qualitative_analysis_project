@@ -45,12 +45,12 @@ def _process_data_with_llm(
 
     This helper is used by `run_analysis` for both Step 6 and Step 8.
     It iterates over `data_to_process`, builds prompts for each row,
-    calls the LLM, parses the JSON output, and aggregates everything
-    into a results DataFrame.
+    calls the LLM, parses the model output into a dictionary, and
+    aggregates everything into a results DataFrame.
 
     A simple early-stopping mechanism is applied:
     if more than 20% of the entries cannot be parsed (e.g. truncated
-    JSON due to insufficient max tokens), the run is stopped early.
+    output due to insufficient max tokens), the run is stopped early.
 
     Args:
         app_instance: The QualitativeAnalysisApp instance.
@@ -321,7 +321,9 @@ def _process_multiple_runs(
         data_to_process: DataFrame containing the rows to process.
         n_runs: Number of runs to execute on the same data.
         debug_mode: Whether to show constructed prompts for debugging.
-        is_remaining_data: Whether this is used for remaining data (Step 8).
+        is_remaining_data: Currently unused in the implementation.
+            Reserved for potential future use to distinguish runs on
+            remaining data (Step 8) from runs on the main data (Step 6).
 
     Returns:
         A tuple (combined_results_df, early_stop) where:
@@ -369,7 +371,9 @@ def run_analysis(
         app_instance: The QualitativeAnalysisApp instance.
         analyze_remaining: Whether to analyze remaining data (Step 8)
             instead of the main data (Step 6).
-        previous_results_df: Previous results DataFrame (required for Step 8).
+        previous_results_df: Optional previous results DataFrame for Step 8.
+            If None, the function will try to retrieve it from the session
+            state (results from Step 6).
 
     Returns:
         The final results DataFrame (possibly partial if early stopping
