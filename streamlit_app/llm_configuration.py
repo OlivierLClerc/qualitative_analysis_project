@@ -1,5 +1,21 @@
 """
 Module for handling LLM configuration functionality in the Streamlit app.
+
+This module handles:
+- Selecting an LLM provider (OpenAI, Anthropic, Gemini, Together, OpenRouter, Azure).
+- Entering or loading the provider’s API key.
+- Choosing a model depending on the provider.
+- Configuring advanced parameters such as temperature and max tokens.
+- Setting Gemini-specific options (system instruction and thinking credits).
+
+The function `configure_llm(...)` updates `app_instance` with:
+    - app_instance.llm_client
+    - app_instance.selected_model
+    - app_instance.temperature
+    - app_instance.max_tokens
+    - (Gemini only) system instruction + thinking credits
+
+Returns the instantiated LLM client, or None if configuration is incomplete.
 """
 
 import streamlit as st

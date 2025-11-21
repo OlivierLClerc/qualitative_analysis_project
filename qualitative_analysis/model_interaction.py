@@ -9,6 +9,7 @@ including:
     - Anthropic
     - Together AI
     - OpenRouter
+    - Google Gemini
     - vLLM (for open-source models)
 
 It abstracts API interactions to simplify sending prompts and retrieving responses across multiple providers.
@@ -17,9 +18,13 @@ Dependencies:
     - openai: For interacting with Azure OpenAI, standard OpenAI models, and OpenRouter.
     - anthropic: For interacting with Anthropic Claude models.
     - together: For interacting with Together AI models.
+    - google-genai: For interacting with Google Gemini models.
     - vllm: For running inference with open-source models locally.
+    - google.api_core.exceptions: For handling Google API errors (Gemini).
     - abc: For defining the abstract base class.
     - types: For using SimpleNamespace to standardize usage object representation.
+    - time: For retry backoff with Gemini.
+    - re: For normalizing field names for Gemini JSON schema.
 
 Classes:
     - LLMClient: Abstract base class defining the interface for LLM clients.
@@ -27,12 +32,13 @@ Classes:
     - AzureOpenAILLMClient: Client for interacting with Azure OpenAI language models.
     - AnthropicLLMClient: Client for interacting with Anthropic Claude models.
     - TogetherLLMClient: Client for interacting with Together AI language models.
+    - GeminiLLMClient: Client for interacting with Google Gemini models.
     - OpenRouterLLMClient: Client for interacting with OpenRouter language models.
     - VLLMLLMClient: Client for interacting with open-source models using vLLM.
 
 Functions:
-    - get_llm_client(provider, config): Factory function to instantiate the appropriate LLM client 
-      based on the specified provider string.
+    - get_llm_client(provider, config, model=None): Factory function to instantiate the appropriate
+      LLM client based on the specified provider string.
 """
 
 from abc import ABC, abstractmethod
@@ -627,37 +633,43 @@ class GeminiLLMClient(LLMClient):
             The text prompt to be sent to the Gemini model.
         model : str
             The model identifier (e.g., "gemini-2.0-flash-001").
-        **kwargs :
-            Optional arguments for generation configuration:
-                - temperature (float, default = 0.0):
+        app_instance :
+            An object that carries runtime configuration attributes used for this call.
+            The following attributes are read if present:
+                - temperature (float, default = 0.0) :
                     Controls the randomness of the output.
-                - max_tokens (int, default = 500):
+                - max_tokens (int, default = 500) :
                     Maximum number of tokens to generate.
+                - selected_fields (list[str]) :
+                    Names of fields to include in the JSON schema for the response.
+                - field_types (dict[str, str]) :
+                    Mapping from field name to JSON type ("string", "number", "integer", "boolean").
+                - field_enums (dict[str, list[str]]) :
+                    Optional enum values per field.
+                - gemini_system_instruction (str or None) :
+                    Optional system-level instruction to control model behavior.
+                - gemini_thinking_credits (int) :
+                    Optional thinking budget passed to `ThinkingConfig(thinking_budget=...)`.
+        **kwargs :
+            Optional arguments:
                 - verbose (bool, default = False):
                     If True, prints debug information (prompt and generated text).
-                - system_instruction (str or None, optional):
-                    Optional system-level instruction to control model behavior.
-                    If None or an empty string, no system instruction is sent.
-                - thinking_credits (int or None, optional):
-                    Optional reasoning / thinking budget passed to
-                    `ThinkingConfig(thinking_budget=...)`. If None, the underlying
-                    Gemini defaults are used.
 
         Returns
         -------
         tuple[str, SimpleNamespace]
             A tuple containing:
                 - The generated response text (str).
-                - A SimpleNamespace object with estimated token usage:
+                - A SimpleNamespace object with token usage:
                     - prompt_tokens
-                    - completion_tokens
+                    - completion_tokens (output + thoughts tokens)
                     - total_tokens
 
         Error Handling
         --------------
         - Automatically retries up to 5 times on transient errors, such as
           overload, quota issues, or temporary unavailability.
-        - Uses exponential backoff between retries (1.5s, 3s, 6s, 12s, ...).
+        - Uses exponential backoff between retries (0.5s, 1s, 2s, 4s, ...).
         - Re-raises the exception immediately if the error is not considered transient,
           or after the final retry attempt fails.
         """
@@ -714,18 +726,6 @@ class GeminiLLMClient(LLMClient):
                     ),
                 )
                 app_instance.selected_fields
-                print("**********************")
-                print("****** BEGINING ******")
-                print("**********************")
-                print("=== JSON SCHEMA ===")
-                print(response_json_schema)
-                print()
-                print(f"Thinking credit = {thinking_credits}")
-                print(f"max_tokens = {max_tokens}")
-                print("\n=== RAW RESPONSE ===")
-                print(response)
-                print("\n=== TEXT ===")
-                print(response.text)
 
                 # Tokens counting
                 output_token_count = response.usage_metadata.candidates_token_count or 0
@@ -736,11 +736,6 @@ class GeminiLLMClient(LLMClient):
                     completion_tokens=completion_tokens,
                     total_tokens=response.usage_metadata.total_token_count
                 )
-                print("\n=== USAGE OBJECT ===")
-                print(usage_obj)
-                print("**********************")
-                print("********* END ********")
-                print("**********************")
                 
                 break
 

@@ -12,7 +12,7 @@ def select_fields(app_instance: Any, step_number: int = 4) -> List[str]:
     Fields to Extract
     Allows the user to specify which fields (e.g., 'Evaluation', 'Comments')
     the LLM should return in its JSON output.
-    Also asks which field is the label column.
+    Also asks which field is the label column when annotation columns are available.
 
     Args:
         app_instance: The QualitativeAnalysisApp instance
