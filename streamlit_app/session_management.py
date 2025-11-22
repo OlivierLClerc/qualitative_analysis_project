@@ -59,6 +59,8 @@ def load_previous_session(app_instance: Any) -> None:
             app_instance.codebook = session_data.get("codebook", "")
             app_instance.examples = session_data.get("examples", "")
             app_instance.selected_fields = session_data.get("selected_fields", [])
+            app_instance.field_types = session_data.get("field_types", {})
+            app_instance.field_enums = session_data.get("field_enums", {})
             app_instance.selected_model = session_data.get("selected_model", None)
             app_instance.annotation_columns = session_data.get("annotation_columns", [])
 
@@ -89,11 +91,14 @@ def load_previous_session(app_instance: Any) -> None:
             st.session_state["codebook"] = app_instance.codebook
             st.session_state["examples"] = app_instance.examples
             st.session_state["selected_fields"] = app_instance.selected_fields
+            st.session_state["field_types"] = app_instance.field_types
+            st.session_state["field_enums"] = app_instance.field_enums
             st.session_state["selected_model"] = app_instance.selected_model
             st.session_state["annotation_columns"] = app_instance.annotation_columns
             st.session_state["label_column"] = label_column
             st.session_state["label_type"] = label_type
             st.session_state["text_columns"] = text_columns
+
 
             # Update generation mode session state
             st.session_state["selected_mode"] = selected_mode
@@ -183,6 +188,8 @@ def save_session(app_instance: Any) -> None:
         "codebook": app_instance.codebook,
         "examples": app_instance.examples,
         "selected_fields": app_instance.selected_fields,
+        "field_types": getattr(app_instance, "field_types", {}),
+        "field_enums": getattr(app_instance, "field_enums", {}),
         "selected_model": app_instance.selected_model,
         "annotation_columns": app_instance.annotation_columns,
         "label_column": app_instance.label_column,

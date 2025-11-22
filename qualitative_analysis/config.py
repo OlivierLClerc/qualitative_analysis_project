@@ -2,8 +2,9 @@
 config.py
 
 This module manages configuration settings and pricing information for different
-OpenAI models and service providers. It securely loads environment variables and
-defines pricing data for API usage cost estimation.
+LLM providers (OpenAI, Azure OpenAI, Anthropic, Gemini, OpenRouter, vLLM).
+It securely loads environment variables and defines pricing data used for
+API usage cost estimation in the app.
 """
 
 import os
@@ -78,8 +79,11 @@ MODEL_CONFIG: Dict[str, Dict[str, Any]] = {
 
 
 # Pricing information for different models.
-# The prices are in dollars per token, where 'prompt' is the cost of input tokens
-# and 'completion' is the cost of output tokens.
+# The prices are in dollars per token, where:
+#   - 'prompt'     = cost per input token
+#   - 'completion' = cost per output token
+# Values are approximate / illustrative and are mainly used for relative
+# cost estimation inside the app.
 MODEL_PRICES: Dict[str, Dict[str, float]] = {
     # OpenAI models
     "gpt-4o": {"prompt": 0.0025, "completion": 0.01},
@@ -109,13 +113,17 @@ MODEL_PRICES: Dict[str, Dict[str, float]] = {
         "completion": 0.0040,
     },
     # Gemini models (example pricing - check Google AI Studio for current prices)
-    "gemini-2.0-flash-001": {
-        "prompt": 0.00005,  # Example: $0.50 per million input tokens
-        "completion": 0.0001,  # Example: $1.00 per million output tokens
+    "gemini-2.5-flash-lite": {
+        "prompt": 0.0001,      # $0.10 per million input tokens
+        "completion": 0.0004,   # $0.40 per million output tokens
     },
-    "gemini-2.5-pro-preview-03-25": {
-        "prompt": 0.00005,  # Example: $0.50 per million input tokens
-        "completion": 0.0001,  # Example: $1.00 per million output tokens
+    "gemini-2.5-flash": {
+        "prompt": 0.0003,      # $0.30 per million input tokens
+        "completion": 0.0025  # $2.50 per million output tokens
+    },
+    "gemini-2.5-pro": {
+        "prompt": 0.00125,    # $1.25 per 1 000 000 input tokens
+        "completion": 0.01   # $10.00 per 1 000 000 output tokens
     },
     # Common OpenRouter models (pricing may vary - check https://openrouter.ai/models for current rates)
     # Note: For models not listed here, cost estimation will show a generic message
