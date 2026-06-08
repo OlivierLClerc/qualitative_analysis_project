@@ -98,7 +98,8 @@ class QualitativeAnalysisApp:
             """
             **LLM4Humanities** helps you analyze qualitative datasets 
             using Large Language Models.
-            Choose between **Annotation Mode** (analyze existing data) or **Generation Mode** (generate and annotate new content).
+            On this page, choose between **Annotation Mode** (analyze existing data) or **Generation Mode** (generate and annotate new content).
+            To compute metrics directly from existing columns without running the LLM workflow, open the **Metrics Only** page from the sidebar.
             """,
             unsafe_allow_html=True,
         )
@@ -110,7 +111,7 @@ class QualitativeAnalysisApp:
             ["Annotation Mode", "Generation Mode"],
             index=st.session_state.get("selected_mode_index", 0),
             key="app_mode_selection",
-            help="Annotation Mode: Analyze existing datasets with human annotations. Generation Mode: Generate new content and annotate it.",
+            help="Annotation Mode: Analyze existing datasets with human annotations. Generation Mode: Generate new content and annotate it. Metrics-only evaluation is available from the sidebar page.",
         )
 
         # Store mode selection

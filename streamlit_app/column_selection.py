@@ -9,6 +9,26 @@ from typing import Dict, List, Optional, Any
 from qualitative_analysis import clean_and_normalize, sanitize_dataframe
 
 
+def _sanitize_multiselect_state(
+    key: str,
+    *,
+    valid_options: List[str],
+    fallback: Optional[List[str]] = None,
+) -> List[str]:
+    fallback = fallback or []
+    current_value = st.session_state.get(key)
+
+    if not isinstance(current_value, list):
+        sanitized = [value for value in fallback if value in valid_options]
+        st.session_state[key] = sanitized
+        return sanitized
+
+    sanitized = [value for value in current_value if value in valid_options]
+    if sanitized != current_value:
+        st.session_state[key] = sanitized
+    return sanitized
+
+
 def select_rename_describe_columns(
     app_instance: Any, data: pd.DataFrame
 ) -> Optional[pd.DataFrame]:
@@ -50,12 +70,18 @@ def select_rename_describe_columns(
             unsafe_allow_html=True,
         )
 
+        annotation_selection_key = "annotation_columns_selection"
+        _sanitize_multiselect_state(
+            annotation_selection_key,
+            valid_options=columns,
+            fallback=st.session_state.get("annotation_columns", []),
+        )
         app_instance.annotation_columns = st.multiselect(
             "Annotation Column(s):",
             options=columns,
-            default=st.session_state.get("annotation_columns", []),
-            key="annotation_columns_selection",
+            key=annotation_selection_key,
         )
+        st.session_state["annotation_columns"] = list(app_instance.annotation_columns)
 
         # Initialize session state for the missing-annotation toggle if needed
         if "allow_missing_annotations" not in st.session_state:
@@ -94,9 +120,6 @@ def select_rename_describe_columns(
 
             st.info("Evaluation label types are configured per mapping in Step 4.")
 
-            # Store final annotation columns in session state
-            st.session_state["annotation_columns"] = app_instance.annotation_columns
-
         # Step 2.2: Select analysis columns (exclude annotation columns)
         columns_for_analysis = [
             c for c in data.columns if c not in app_instance.annotation_columns
@@ -115,15 +138,21 @@ def select_rename_describe_columns(
             valid_previous_selection = [
                 col for col in previous_selection if col in columns_for_analysis
             ]
-
-            app_instance.selected_columns = st.multiselect(
-                "Columns to analyze:",
-                options=columns_for_analysis,
-                default=(
+            selected_columns_key = "selected_columns_selection"
+            _sanitize_multiselect_state(
+                selected_columns_key,
+                valid_options=columns_for_analysis,
+                fallback=(
                     valid_previous_selection
                     if valid_previous_selection
                     else columns_for_analysis
                 ),
+            )
+
+            app_instance.selected_columns = st.multiselect(
+                "Columns to analyze:",
+                options=columns_for_analysis,
+                key=selected_columns_key,
             )
             st.session_state["selected_columns"] = app_instance.selected_columns
 
@@ -184,11 +213,16 @@ def select_rename_describe_columns(
             col for col in default_text_cols if col in processed.columns.tolist()
         ]
 
+        text_selection_key = "text_columns_selection"
+        _sanitize_multiselect_state(
+            text_selection_key,
+            valid_options=processed.columns.tolist(),
+            fallback=valid_default_text_cols,
+        )
         text_cols: List[str] = st.multiselect(
             "Text columns:",
             processed.columns.tolist(),
-            default=valid_default_text_cols,
-            key="text_columns_selection",
+            key=text_selection_key,
         )
 
         # Store text columns in session state and app instance

@@ -13,15 +13,24 @@ import pandas as pd
 
 
 LABEL_TYPE_OPTIONS = ["Integer", "Float", "Text"]
+KAPPA_WEIGHT_OPTIONS = {
+    "Unweighted": None,
+    "Linear": "linear",
+    "Quadratic": "quadratic",
+}
+KRIPP_LEVEL_OPTIONS = ["ordinal", "nominal", "interval", "ratio"]
 MISSING_TEXT_VALUES = {"", "none", "nan", "<na>", "n/a", "null"}
 
 
-class EvaluationMapping(TypedDict):
+class EvaluationMapping(TypedDict, total=False):
     id: str
     name: str
     llm_field: str
     human_columns: List[str]
     label_type: str
+    annotation_columns: List[str]
+    kappa_weights: Optional[str]
+    kripp_level_of_measurement: str
 
 
 @dataclass
@@ -32,17 +41,27 @@ class PreparedEvaluationData:
     warnings: List[str]
 
 
-def clear_evaluation_result_cache(session_state: Any) -> None:
+def clear_evaluation_result_cache(session_state: Any, prefix: str = "") -> None:
     """
     Remove cached evaluation results from Streamlit session state.
     """
+    cache_prefix = f"{prefix}evaluation_results_"
     for key in list(session_state.keys()):
-        if key.startswith("evaluation_results_"):
+        if key.startswith(cache_prefix):
             del session_state[key]
 
 
 def create_mapping_id() -> str:
     return uuid.uuid4().hex[:8]
+
+
+def default_kripp_level_for_label_type(label_type: str) -> str:
+    normalized = label_type.lower()
+    if normalized == "text":
+        return "nominal"
+    if normalized == "float":
+        return "interval"
+    return "ordinal"
 
 
 def _default_mapping_name(index: int, llm_field: str) -> str:
@@ -82,6 +101,9 @@ def create_default_mapping(
         "llm_field": llm_field,
         "human_columns": list(annotation_columns),
         "label_type": label_type,
+        "annotation_columns": list(annotation_columns),
+        "kappa_weights": None,
+        "kripp_level_of_measurement": default_kripp_level_for_label_type(label_type),
     }
 
 
@@ -132,11 +154,39 @@ def sanitize_evaluation_mappings(
                 if isinstance(column, str) and column in annotation_columns
             ]
 
+        raw_annotation_columns = raw_mapping.get("annotation_columns")
+        if raw_annotation_columns is None:
+            annotation_columns_for_mapping = list(human_columns)
+        else:
+            annotation_columns_for_mapping = [
+                column
+                for column in raw_annotation_columns
+                if isinstance(column, str) and column in annotation_columns
+            ]
+            if not annotation_columns_for_mapping:
+                annotation_columns_for_mapping = list(human_columns)
+
         label_type = str(raw_mapping.get("label_type", legacy_label_type or "Text"))
         if label_type not in LABEL_TYPE_OPTIONS:
             label_type = (
                 legacy_label_type if legacy_label_type in LABEL_TYPE_OPTIONS else "Text"
             )
+
+        raw_kappa_weights = raw_mapping.get("kappa_weights")
+        kappa_weights = (
+            raw_kappa_weights
+            if raw_kappa_weights in set(KAPPA_WEIGHT_OPTIONS.values())
+            else None
+        )
+
+        raw_kripp_level = raw_mapping.get("kripp_level_of_measurement")
+        if raw_kripp_level in KRIPP_LEVEL_OPTIONS:
+            kripp_level_of_measurement = str(raw_kripp_level)
+        else:
+            kripp_level_of_measurement = default_kripp_level_for_label_type(label_type)
+
+        if label_type == "Text":
+            kripp_level_of_measurement = "nominal"
 
         name = str(raw_mapping.get("name", "")).strip() or _default_mapping_name(
             index, llm_field
@@ -149,6 +199,9 @@ def sanitize_evaluation_mappings(
                 "llm_field": llm_field,
                 "human_columns": human_columns,
                 "label_type": label_type,
+                "annotation_columns": annotation_columns_for_mapping,
+                "kappa_weights": kappa_weights,
+                "kripp_level_of_measurement": kripp_level_of_measurement,
             }
         )
 

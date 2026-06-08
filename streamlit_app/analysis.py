@@ -5,7 +5,7 @@ Module for handling analysis functionality in the Streamlit app.
 import streamlit as st
 import pandas as pd
 import io
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 from qualitative_analysis import (
     parse_llm_response,
@@ -17,6 +17,30 @@ from streamlit_app.prompt_construction import (
     construct_prompt,
 )
 from streamlit_app.evaluation_mappings import clear_evaluation_result_cache
+
+
+ANNOTATION_EVALUATION_PREFIX = "annotation_"
+
+
+def _sync_choice_widget_state(
+    *,
+    widget_key: str,
+    valid_options: Sequence[Any],
+    default_value: Optional[Any] = None,
+) -> None:
+    """
+    Keep a keyed single-choice widget aligned with its current option list.
+    """
+    if not valid_options:
+        st.session_state.pop(widget_key, None)
+        return
+
+    resolved_default = (
+        default_value if default_value in valid_options else valid_options[0]
+    )
+    current_value = st.session_state.get(widget_key)
+    if current_value not in valid_options:
+        st.session_state[widget_key] = resolved_default
 
 
 def format_value_for_prompt(value: Any) -> Any:
@@ -458,6 +482,11 @@ def run_analysis(
                     col1, col2 = st.columns([2, 1])
 
                     with col1:
+                        _sync_choice_widget_state(
+                            widget_key="step8_selected_run",
+                            valid_options=available_runs,
+                            default_value=available_runs[0],
+                        )
                         selected_run = st.selectbox(
                             "Choose which run to use for remaining data annotation:",
                             options=available_runs,
@@ -696,7 +725,9 @@ def run_analysis(
                 app_instance.results = combined_results_df.to_dict("records")
                 st.session_state["results"] = app_instance.results
                 st.session_state["results_df"] = combined_results_df
-                clear_evaluation_result_cache(st.session_state)
+                clear_evaluation_result_cache(
+                    st.session_state, prefix=ANNOTATION_EVALUATION_PREFIX
+                )
 
                 if not early_stop:
                     st.success("Analysis of remaining data completed!")
@@ -944,7 +975,9 @@ def run_analysis(
                 st.session_state["analysis_completed"] = True
                 st.session_state["n_runs_used"] = n_runs
                 st.session_state["entries_processed"] = len(data_to_process)
-                clear_evaluation_result_cache(st.session_state)
+                clear_evaluation_result_cache(
+                    st.session_state, prefix=ANNOTATION_EVALUATION_PREFIX
+                )
 
             # ------------------------------------------------------------------
             # Display results (outside button block to persist across reruns)
@@ -971,9 +1004,15 @@ def run_analysis(
                     )
 
                     if view_option == "By individual run":
+                        available_runs = sorted(results_df["run"].unique())
+                        _sync_choice_widget_state(
+                            widget_key="selected_run_view",
+                            valid_options=available_runs,
+                            default_value=available_runs[0],
+                        )
                         selected_run = st.selectbox(
                             "Select run to view:",
-                            options=sorted(results_df["run"].unique()),
+                            options=available_runs,
                             key="selected_run_view",
                         )
                         display_df = results_df[results_df["run"] == selected_run]

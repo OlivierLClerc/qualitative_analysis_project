@@ -19,11 +19,57 @@ Returns the instantiated LLM client, or None if configuration is incomplete.
 """
 
 import streamlit as st
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from qualitative_analysis import get_llm_client
 import qualitative_analysis.config as config
 from streamlit_app.field_constraints import render_field_constraints_editor
+
+
+def _sync_choice_widget_state(
+    *,
+    widget_key: str,
+    valid_options: Sequence[Any],
+    default_value: Optional[Any] = None,
+) -> None:
+    """
+    Keep a keyed selectbox/radio aligned with the currently valid options.
+    """
+    if not valid_options:
+        st.session_state.pop(widget_key, None)
+        return
+
+    resolved_default = (
+        default_value if default_value in valid_options else valid_options[0]
+    )
+    current_value = st.session_state.get(widget_key)
+    if current_value not in valid_options:
+        st.session_state[widget_key] = resolved_default
+
+
+def _sync_number_widget_state(
+    *,
+    widget_key: str,
+    default_value: int,
+    min_value: Optional[int] = None,
+    max_value: Optional[int] = None,
+) -> None:
+    """
+    Clamp numeric widget session state when bounds change across reruns.
+    """
+    current_value = st.session_state.get(widget_key, default_value)
+
+    try:
+        numeric_value = int(current_value)
+    except (TypeError, ValueError):
+        numeric_value = default_value
+
+    if min_value is not None and numeric_value < min_value:
+        numeric_value = min_value
+    if max_value is not None and numeric_value > max_value:
+        numeric_value = max_value
+
+    st.session_state[widget_key] = numeric_value
 
 
 def configure_llm(
@@ -89,6 +135,11 @@ def configure_llm(
 
         # Make key unique based on step number
         provider_key = f"llm_provider_select_step{step_number}"
+        _sync_choice_widget_state(
+            widget_key=provider_key,
+            valid_options=provider_options,
+            default_value=provider_options[0],
+        )
 
         selected_provider_display = st.selectbox(
             "Select LLM Provider:", provider_options, key=provider_key
@@ -199,6 +250,15 @@ def configure_llm(
 
         elif selected_provider_display == "OpenAI":
             model_options = ["gpt-4o", "gpt-4o-mini"]
+            _sync_choice_widget_state(
+                widget_key=model_key,
+                valid_options=model_options,
+                default_value=(
+                    app_instance.selected_model
+                    if app_instance.selected_model in model_options
+                    else model_options[0]
+                ),
+            )
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
@@ -206,6 +266,15 @@ def configure_llm(
             )
         elif selected_provider_display == "Anthropic":
             model_options = ["claude-3-7-sonnet-20250219", "claude-3-5-haiku-20241022"]
+            _sync_choice_widget_state(
+                widget_key=model_key,
+                valid_options=model_options,
+                default_value=(
+                    app_instance.selected_model
+                    if app_instance.selected_model in model_options
+                    else model_options[0]
+                ),
+            )
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
@@ -218,6 +287,15 @@ def configure_llm(
                 "gemini-2.5-flash",
                 "gemini-2.5-pro",
             ]
+            _sync_choice_widget_state(
+                widget_key=model_key,
+                valid_options=model_options,
+                default_value=(
+                    app_instance.selected_model
+                    if app_instance.selected_model in model_options
+                    else model_options[0]
+                ),
+            )
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
@@ -239,10 +317,16 @@ def configure_llm(
                 if chosen_model == "gemini-2.5-pro"
                 else ["Turn off", "Manual", "Let the model decide dynamically"]
             )
+            thinking_mode_key = f"thinking_mode_{step_number}"
+            _sync_choice_widget_state(
+                widget_key=thinking_mode_key,
+                valid_options=options,
+                default_value=options[0],
+            )
             mode = st.radio(
                 "Thinking credits definition",
                 options,
-                key=f"thinking_mode_{step_number}",
+                key=thinking_mode_key,
             )
 
             if chosen_model == "gemini-2.5-pro":
@@ -256,31 +340,42 @@ def configure_llm(
                 max_credits = 24576
 
             if mode == "Let the model decide dynamically":
+                dynamic_key = f"thinking_dynamic_{step_number}"
+                st.session_state[dynamic_key] = -1
                 thinking_input = st.number_input(
                     "Thinking credits (dynamic mode enabled)",
                     value=-1,
                     disabled=True,
-                    key=f"thinking_dynamic_{step_number}",
+                    key=dynamic_key,
                 )
                 thinking_credits = -1
 
             elif mode == "Turn off":
+                off_key = f"thinking_off_{step_number}"
+                st.session_state[off_key] = 0
                 thinking_input = st.number_input(
                     "Thinking credits (thinking disabled)",
                     value=0,
                     disabled=True,
-                    key=f"thinking_off_{step_number}",
+                    key=off_key,
                 )
                 thinking_credits = 0
 
             else:  # Manual
+                manual_key = f"thinking_manual_{step_number}"
+                _sync_number_widget_state(
+                    widget_key=manual_key,
+                    default_value=min_credits,
+                    min_value=min_credits,
+                    max_value=max_credits,
+                )
                 thinking_input = st.number_input(
                     "Thinking credits",
                     min_value=min_credits,
                     max_value=max_credits,
                     step=128,
                     value=min_credits,
-                    key=f"thinking_manual_{step_number}",
+                    key=manual_key,
                     help=(
                         "Controls how much internal reasoning the model is allowed to perform "
                         "before answering; higher values enable deeper reasoning but cost more tokens.  \n"
@@ -294,6 +389,15 @@ def configure_llm(
 
         elif selected_provider_display == "Together":
             model_options = ["gpt-neoxt-chat-20B"]
+            _sync_choice_widget_state(
+                widget_key=model_key,
+                valid_options=model_options,
+                default_value=(
+                    app_instance.selected_model
+                    if app_instance.selected_model in model_options
+                    else model_options[0]
+                ),
+            )
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,
@@ -301,6 +405,15 @@ def configure_llm(
             )
         else:  # Azure
             model_options = ["gpt-4o", "gpt-4o-mini"]
+            _sync_choice_widget_state(
+                widget_key=model_key,
+                valid_options=model_options,
+                default_value=(
+                    app_instance.selected_model
+                    if app_instance.selected_model in model_options
+                    else model_options[0]
+                ),
+            )
             chosen_model = st.selectbox(
                 "Select Model:",
                 model_options,

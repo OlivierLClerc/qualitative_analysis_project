@@ -8,7 +8,11 @@ from typing import Optional, Any, Dict, Union
 import pandas as pd
 
 from qualitative_analysis import load_data
+from streamlit_app.evaluation_mappings import clear_evaluation_result_cache
 from streamlit_app.session_management import load_previous_session
+
+
+ANNOTATION_EVALUATION_PREFIX = "annotation_"
 
 
 def _build_upload_signature(
@@ -21,6 +25,35 @@ def _build_upload_signature(
     file_hash = hashlib.md5(file_bytes).hexdigest()
     csv_delimiter = delimiter if file_type == "csv" else None
     return (uploaded_file.name, len(file_bytes), file_hash, csv_delimiter)
+
+
+def infer_uploaded_file_type(uploaded_file: Any) -> str:
+    """
+    Infer the uploaded dataset type from its filename.
+    """
+    return "csv" if uploaded_file.name.lower().endswith(".csv") else "xlsx"
+
+
+def build_upload_signature(
+    uploaded_file: Any, delimiter: str
+) -> tuple[str, int, str, Optional[str]]:
+    """
+    Build the upload signature for a Streamlit-uploaded dataset.
+    """
+    file_type = infer_uploaded_file_type(uploaded_file)
+    return _build_upload_signature(
+        uploaded_file=uploaded_file,
+        file_type=file_type,
+        delimiter=delimiter,
+    )
+
+
+def load_uploaded_dataset(uploaded_file: Any, delimiter: str) -> pd.DataFrame:
+    """
+    Load a Streamlit-uploaded CSV or XLSX file into a DataFrame.
+    """
+    file_type = infer_uploaded_file_type(uploaded_file)
+    return load_data(uploaded_file, file_type=file_type, delimiter=delimiter)
 
 
 def upload_dataset(
@@ -63,13 +96,8 @@ def upload_dataset(
         uploaded_file = st.file_uploader("Upload CSV or XLSX", type=["csv", "xlsx"])
 
         if uploaded_file is not None:
-            file_type = "csv" if uploaded_file.name.endswith(".csv") else "xlsx"
             delimiter = st.text_input("CSV Delimiter (if CSV)", value=";")
-            upload_signature = _build_upload_signature(
-                uploaded_file=uploaded_file,
-                file_type=file_type,
-                delimiter=delimiter,
-            )
+            upload_signature = build_upload_signature(uploaded_file, delimiter)
             previous_signature = session_state.get("uploaded_dataset_signature")
             should_reload_data = (
                 previous_signature != upload_signature
@@ -78,19 +106,28 @@ def upload_dataset(
 
             if should_reload_data:
                 try:
-                    data = load_data(
-                        uploaded_file, file_type=file_type, delimiter=delimiter
-                    )
+                    data = load_uploaded_dataset(uploaded_file, delimiter)
                     # Reset session states relevant to data only when a new dataset is loaded
                     session_state["selected_columns"] = []
+                    session_state.pop("selected_columns_selection", None)
                     session_state["column_renames"] = {}
                     session_state["column_descriptions"] = {}
                     session_state["annotation_columns"] = []
+                    session_state.pop("annotation_columns_selection", None)
+                    session_state.pop("text_columns_selection", None)
                     session_state["evaluation_mappings"] = []
                     session_state["evaluation_mappings_initialized"] = False
                     session_state["label_column"] = None
                     session_state["label_type"] = None
+                    session_state["results"] = []
+                    session_state.pop("results_df", None)
+                    session_state["analysis_completed"] = False
+                    session_state.pop("n_runs_used", None)
+                    session_state.pop("entries_processed", None)
                     session_state["uploaded_dataset_signature"] = upload_signature
+                    clear_evaluation_result_cache(
+                        session_state, prefix=ANNOTATION_EVALUATION_PREFIX
+                    )
 
                     st.success("Data loaded successfully!")
                     st.write("Data Preview:", data.head())

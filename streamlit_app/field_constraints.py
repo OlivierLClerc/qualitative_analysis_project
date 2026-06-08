@@ -2,12 +2,33 @@
 Gemini structured-output field constraint helpers.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence
 
 import streamlit as st
 
 
 FIELD_TYPE_OPTIONS = ["string", "number", "boolean"]
+
+
+def _sync_choice_widget_state(
+    *,
+    widget_key: str,
+    valid_options: Sequence[Any],
+    default_value: Optional[Any] = None,
+) -> None:
+    """
+    Keep a keyed selectbox aligned with its currently valid options.
+    """
+    if not valid_options:
+        st.session_state.pop(widget_key, None)
+        return
+
+    resolved_default = (
+        default_value if default_value in valid_options else valid_options[0]
+    )
+    current_value = st.session_state.get(widget_key)
+    if current_value not in valid_options:
+        st.session_state[widget_key] = resolved_default
 
 
 def render_field_constraints_editor(app_instance: Any, step_number: int) -> None:
@@ -43,6 +64,12 @@ def render_field_constraints_editor(app_instance: Any, step_number: int) -> None
 
             default_type = existing_field_types.get(field, "string")
             with col1:
+                field_type_key = f"field_type_step{step_number}_{field}"
+                _sync_choice_widget_state(
+                    widget_key=field_type_key,
+                    valid_options=FIELD_TYPE_OPTIONS,
+                    default_value=default_type,
+                )
                 selected_type = st.selectbox(
                     "Type",
                     options=FIELD_TYPE_OPTIONS,
@@ -52,7 +79,7 @@ def render_field_constraints_editor(app_instance: Any, step_number: int) -> None
                         else 0
                     ),
                     help="Choose `string` for text, `number` for numeric values, and `boolean` for True/False outputs.",
-                    key=f"field_type_step{step_number}_{field}",
+                    key=field_type_key,
                 )
             field_types[field] = selected_type
 
