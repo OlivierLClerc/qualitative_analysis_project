@@ -283,6 +283,6 @@ Contains text files defining classification rules or codebooks for the user-case
 - **`.gitignore`** – Specifies files to be ignored by Git.
 - **`requirements.txt`** – Lists all Python dependencies required for the project.
 
-# License
+## License
 
 This project is released under the MIT License. See [LICENSE](LICENSE) for details.
